@@ -29,7 +29,9 @@ class TypesTest {
 
   static class StringHandler implements Handler<String> {
     @Override
-    public void handle(String value) {}
+    public void handle(String value) {
+      // no-op for test fixture
+    }
   }
 
   static class Box<T> {}

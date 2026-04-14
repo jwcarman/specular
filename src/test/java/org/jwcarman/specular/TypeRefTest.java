@@ -65,10 +65,12 @@ class TypeRefTest {
     TypeRef<Map<String, Integer>> b = new TypeRef<>() {};
     TypeRef<Map<String, Long>> c = new TypeRef<>() {};
 
-    assertThat(a).isEqualTo(b).hasSameHashCodeAs(b);
-    assertThat(a).isNotEqualTo(c);
-    assertThat(a).isNotEqualTo("string");
-    assertThat(a).isEqualTo(a);
+    assertThat(a)
+        .isEqualTo(a)
+        .isEqualTo(b)
+        .hasSameHashCodeAs(b)
+        .isNotEqualTo(c)
+        .isNotEqualTo("string");
   }
 
   @Test
