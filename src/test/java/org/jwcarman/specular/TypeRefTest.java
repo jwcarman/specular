@@ -21,69 +21,120 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.DisplayNameGeneration;
+import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 class TypeRefTest {
 
-  @Test
-  void capturesSimpleType() {
-    TypeRef<String> ref = new TypeRef<>() {};
-    assertThat(ref.getType()).isEqualTo(String.class);
+  @Nested
+  class construction {
+
+    @Test
+    void captures_simple_type_from_anonymous_subclass() {
+      TypeRef<String> ref = new TypeRef<>() {};
+      assertThat(ref.getType()).isEqualTo(String.class);
+    }
+
+    @Test
+    void captures_parameterized_type_from_anonymous_subclass() {
+      TypeRef<Map<String, Integer>> ref = new TypeRef<>() {};
+      assertThat(ref.getType()).isInstanceOf(ParameterizedType.class);
+      ParameterizedType pt = (ParameterizedType) ref.getType();
+      assertThat(pt.getRawType()).isEqualTo(Map.class);
+      assertThat(pt.getActualTypeArguments()).containsExactly(String.class, Integer.class);
+    }
+
+    @Test
+    void captures_nested_parameterized_type_from_anonymous_subclass() {
+      TypeRef<List<Map<String, Integer>>> ref = new TypeRef<>() {};
+      ParameterizedType pt = (ParameterizedType) ref.getType();
+      assertThat(pt.getRawType()).isEqualTo(List.class);
+      assertThat(pt.getActualTypeArguments()[0]).isInstanceOf(ParameterizedType.class);
+    }
+
+    @Test
+    void of_class_wraps_class() {
+      TypeRef<String> ref = TypeRef.of(String.class);
+      assertThat(ref.getType()).isEqualTo(String.class);
+    }
+
+    @Test
+    void of_type_wraps_parameterized_type() {
+      TypeRef<Map<String, String>> seed = new TypeRef<>() {};
+      TypeRef<?> wrapped = TypeRef.of(seed.getType());
+      assertThat(wrapped.getType()).isEqualTo(seed.getType());
+    }
   }
 
-  @Test
-  void capturesParameterizedType() {
-    TypeRef<Map<String, Integer>> ref = new TypeRef<>() {};
-    assertThat(ref.getType()).isInstanceOf(ParameterizedType.class);
-    ParameterizedType pt = (ParameterizedType) ref.getType();
-    assertThat(pt.getRawType()).isEqualTo(Map.class);
-    assertThat(pt.getActualTypeArguments()).containsExactly(String.class, Integer.class);
+  @Nested
+  class guards {
+
+    @Test
+    void of_class_rejects_null() {
+      assertThatThrownBy(() -> TypeRef.of((Class<?>) null))
+          .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void of_type_rejects_null() {
+      assertThatThrownBy(() -> TypeRef.of((java.lang.reflect.Type) null))
+          .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void raw_anonymous_subclass_is_rejected() {
+      assertThatThrownBy(() -> new TypeRef() {})
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("parameterized");
+    }
   }
 
-  @Test
-  void capturesNestedParameterizedType() {
-    TypeRef<List<Map<String, Integer>>> ref = new TypeRef<>() {};
-    ParameterizedType pt = (ParameterizedType) ref.getType();
-    assertThat(pt.getRawType()).isEqualTo(List.class);
-    assertThat(pt.getActualTypeArguments()[0]).isInstanceOf(ParameterizedType.class);
+  @Nested
+  class raw_type {
+
+    @Test
+    void of_class_returns_the_class() {
+      assertThat(TypeRef.of(String.class).getRawType()).isEqualTo(String.class);
+    }
+
+    @Test
+    void parameterized_returns_outer_erasure() {
+      TypeRef<Map<String, Integer>> ref = new TypeRef<>() {};
+      assertThat(ref.getRawType()).isEqualTo(Map.class);
+    }
+
+    @Test
+    void nested_parameterized_returns_outer_erasure() {
+      TypeRef<List<Map<String, Integer>>> ref = new TypeRef<>() {};
+      assertThat(ref.getRawType()).isEqualTo(List.class);
+    }
   }
 
-  @Test
-  void ofWrapsClass() {
-    TypeRef<String> ref = TypeRef.of(String.class);
-    assertThat(ref.getType()).isEqualTo(String.class);
-  }
+  @Nested
+  class value_semantics {
 
-  @Test
-  void ofRejectsNull() {
-    assertThatThrownBy(() -> TypeRef.of(null)).isInstanceOf(NullPointerException.class);
-  }
+    @Test
+    void equal_captured_types_are_equal_with_matching_hash_codes() {
+      TypeRef<Map<String, Integer>> a = new TypeRef<>() {};
+      TypeRef<Map<String, Integer>> b = new TypeRef<>() {};
+      TypeRef<Map<String, Long>> c = new TypeRef<>() {};
 
-  @Test
-  void equalsAndHashCodeFollowCapturedType() {
-    TypeRef<Map<String, Integer>> a = new TypeRef<>() {};
-    TypeRef<Map<String, Integer>> b = new TypeRef<>() {};
-    TypeRef<Map<String, Long>> c = new TypeRef<>() {};
+      assertThat(a)
+          .isEqualTo(a)
+          .isEqualTo(b)
+          .hasSameHashCodeAs(b)
+          .isNotEqualTo(c)
+          .isNotEqualTo("string");
+    }
 
-    assertThat(a)
-        .isEqualTo(a)
-        .isEqualTo(b)
-        .hasSameHashCodeAs(b)
-        .isNotEqualTo(c)
-        .isNotEqualTo("string");
-  }
-
-  @Test
-  void toStringIncludesTypeName() {
-    TypeRef<List<String>> ref = new TypeRef<>() {};
-    assertThat(ref.toString()).contains("List").contains("String");
-  }
-
-  @Test
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  void rawSubclassRejected() {
-    assertThatThrownBy(() -> new TypeRef() {})
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("parameterized");
+    @Test
+    void to_string_includes_the_captured_type_name() {
+      TypeRef<List<String>> ref = new TypeRef<>() {};
+      assertThat(ref).hasToString("TypeRef<java.util.List<java.lang.String>>");
+    }
   }
 }

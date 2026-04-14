@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `TypeRef.of(Type)` factory for wrapping arbitrary reflected types.
+- `TypeRef.getRawType()` returning the erased raw `Class` of the captured type.
+- `TypeRef.isAssignableFrom(Type)` / `isAssignableFrom(Class<?>)` / `isAssignableFrom(TypeRef<?>)` — generic-aware assignability checks honoring Java's invariance and wildcard bounds.
+
+### Changed
+
+- Test suite reorganized with `@Nested` groupings and `@DisplayNameGeneration(ReplaceUnderscores.class)` for readable output.
+
 ## [0.1.0] - 2026-04-14
 
 ### Added

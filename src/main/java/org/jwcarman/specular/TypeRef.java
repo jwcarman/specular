@@ -18,6 +18,7 @@ package org.jwcarman.specular;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Objects;
+import org.apache.commons.lang3.reflect.TypeUtils;
 
 /**
  * A super-type token that captures a generic {@link Type} at compile time via an anonymous
@@ -61,12 +62,67 @@ public abstract class TypeRef<T> {
   }
 
   /**
+   * Creates a {@link TypeRef} wrapping an arbitrary {@link Type}. The returned reference has an
+   * unknown compile-time parameter since {@code Type} does not carry generic information at the JVM
+   * level.
+   *
+   * @param type the type
+   * @return a type reference wrapping the type
+   */
+  public static TypeRef<?> of(Type type) {
+    Objects.requireNonNull(type, "type must not be null");
+    return new TypeRef<>(type) {};
+  }
+
+  /**
+   * Returns {@code true} if a value of {@code other} is assignable to this reference's captured
+   * type, honoring Java's generic assignability rules (invariant type arguments, wildcard bounds,
+   * raw-class hierarchy).
+   *
+   * @param other the candidate source type
+   * @return {@code true} if assignment-compatible
+   */
+  public boolean isAssignableFrom(Type other) {
+    return TypeUtils.isAssignable(other, type);
+  }
+
+  /**
+   * {@link #isAssignableFrom(Type)} overload for a raw {@link Class}.
+   *
+   * @param other the candidate source type
+   * @return {@code true} if assignment-compatible
+   */
+  public boolean isAssignableFrom(Class<?> other) {
+    return isAssignableFrom((Type) other);
+  }
+
+  /**
+   * {@link #isAssignableFrom(Type)} overload for another {@link TypeRef}.
+   *
+   * @param other the candidate source type
+   * @return {@code true} if assignment-compatible
+   */
+  public boolean isAssignableFrom(TypeRef<?> other) {
+    return isAssignableFrom(other.type);
+  }
+
+  /**
    * Returns the captured type, which may be a {@link Class} or a {@link ParameterizedType}.
    *
    * @return the captured type
    */
   public Type getType() {
     return type;
+  }
+
+  /**
+   * Returns the erased raw {@link Class} of this reference's captured type. For a {@link
+   * ParameterizedType} like {@code Map<String, Integer>}, returns {@code Map.class}.
+   *
+   * @return the raw class
+   */
+  public Class<?> getRawType() {
+    return TypeUtils.getRawType(type, null);
   }
 
   @Override

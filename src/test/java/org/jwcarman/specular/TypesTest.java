@@ -19,8 +19,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import org.junit.jupiter.api.DisplayNameGeneration;
+import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 class TypesTest {
 
   interface Handler<T> {
@@ -38,41 +42,53 @@ class TypesTest {
 
   static class IntBox extends Box<Integer> {}
 
-  @Test
-  void resolveParameterTypeResolvesTypeVariableFromConcreteSubclass() throws Exception {
-    Method method = Handler.class.getMethod("handle", Object.class);
-    Parameter parameter = method.getParameters()[0];
+  @Nested
+  class resolve_parameter_type {
 
-    Class<?> resolved = Types.resolveParameterType(parameter, StringHandler.class);
+    @Test
+    void resolves_type_variable_bound_in_concrete_subclass() throws Exception {
+      Method method = Handler.class.getMethod("handle", Object.class);
+      Parameter parameter = method.getParameters()[0];
 
-    assertThat(resolved).isEqualTo(String.class);
+      Class<?> resolved = Types.resolveParameterType(parameter, StringHandler.class);
+
+      assertThat(resolved).isEqualTo(String.class);
+    }
+
+    @Test
+    void falls_back_to_declared_type_when_unbound() throws Exception {
+      Method method = Handler.class.getMethod("handle", Object.class);
+      Parameter parameter = method.getParameters()[0];
+
+      Class<?> resolved = Types.resolveParameterType(parameter, Handler.class);
+
+      assertThat(resolved).isEqualTo(Object.class);
+    }
   }
 
-  @Test
-  void resolveParameterTypeFallsBackToDeclaredTypeWhenUnresolved() throws Exception {
-    Method method = Handler.class.getMethod("handle", Object.class);
-    Parameter parameter = method.getParameters()[0];
+  @Nested
+  class type_param_from_class {
 
-    Class<?> resolved = Types.resolveParameterType(parameter, Handler.class);
+    @Test
+    void resolves_superclass_type_argument() {
+      Class<?> resolved = Types.typeParamFromClass(IntBox.class, Box.class, 0);
+      assertThat(resolved).isEqualTo(Integer.class);
+    }
 
-    assertThat(resolved).isEqualTo(Object.class);
+    @Test
+    void resolves_interface_type_argument() {
+      Class<?> resolved = Types.typeParamFromClass(StringHandler.class, Handler.class, 0);
+      assertThat(resolved).isEqualTo(String.class);
+    }
   }
 
-  @Test
-  void typeParamFromClassResolvesSuperclassTypeArgument() {
-    Class<?> resolved = Types.typeParamFromClass(IntBox.class, Box.class, 0);
-    assertThat(resolved).isEqualTo(Integer.class);
-  }
+  @Nested
+  class type_param_from_type {
 
-  @Test
-  void typeParamFromClassResolvesInterfaceTypeArgument() {
-    Class<?> resolved = Types.typeParamFromClass(StringHandler.class, Handler.class, 0);
-    assertThat(resolved).isEqualTo(String.class);
-  }
-
-  @Test
-  void typeParamFromTypeReturnsNullWhenUnrelated() {
-    java.lang.reflect.Type resolved = Types.typeParamFromType(String.class, Handler.class, 0);
-    assertThat(resolved).isNull();
+    @Test
+    void returns_null_when_types_are_unrelated() {
+      java.lang.reflect.Type resolved = Types.typeParamFromType(String.class, Handler.class, 0);
+      assertThat(resolved).isNull();
+    }
   }
 }
