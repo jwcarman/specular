@@ -138,9 +138,15 @@ public abstract class TypeRef<T> {
   }
 
   private static TypeRef<?> resolveAgainst(Type type, Class<?> declaringClass, Class<?> context) {
+    if (declaringClass.equals(context)) {
+      return of(type);
+    }
     Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(context, declaringClass);
-    Type resolved = typeArgs == null ? type : TypeUtils.unrollVariables(typeArgs, type);
-    return of(resolved != null ? resolved : type);
+    if (typeArgs == null) {
+      throw new IllegalArgumentException(
+          context.getName() + " is not a subtype of " + declaringClass.getName());
+    }
+    return of(TypeUtils.unrollVariables(typeArgs, type));
   }
 
   /**

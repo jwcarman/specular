@@ -132,6 +132,14 @@ class TypeRefResolutionTest {
       assertThatThrownBy(() -> TypeRef.parameterType(p, null))
           .isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void unrelated_context_is_rejected() {
+      Parameter p = parameterOf(Handler.class, "handle");
+      assertThatThrownBy(() -> TypeRef.parameterType(p, String.class))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("not a subtype");
+    }
   }
 
   @Nested
