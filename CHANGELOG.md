@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-14
+
+### Breaking changes
+
+- `Types` class removed. All functionality consolidated onto `TypeRef`:
+  - `Types.resolveParameterType(Parameter, Class<?>)` → `TypeRef.parameterType(Parameter, Class<?>)` (returns `TypeRef<?>`, carrying full generic form rather than erasing to raw class).
+  - `Types.typeParamFromClass(Class, Class, int)` → instance method `TypeRef.of(cls).typeArgument(definingClass, index)` returning `Optional<TypeRef<?>>`.
+  - `Types.typeParamFromType(Type, Class, int)` → instance method `TypeRef.of(type).typeArgument(definingClass, index)`.
+
+### Added
+
+- `TypeRef.parameterType(Parameter)` and `parameterType(Parameter, Class<?> context)` — resolves a parameter's type, substituting type variables against the context's class hierarchy.
+- `TypeRef.returnType(Method)` and `returnType(Method, Class<?> context)` — same for method return types.
+- `TypeRef.supertype(Class<? super T>)` — returns the fully-parameterized form of a supertype in this reference's hierarchy (transitively walks the chain).
+- `TypeRef.typeArgument(Class<? super T>, int)` instance method with compile-time bound ensuring the defining class is actually a supertype of the captured type.
+
 ## [0.2.0] - 2026-04-14
 
 ### Added
@@ -32,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Java 25+
 - Apache Commons Lang 3 (runtime)
 
-[Unreleased]: https://github.com/jwcarman/specular/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/jwcarman/specular/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/jwcarman/specular/releases/tag/0.3.0
 [0.2.0]: https://github.com/jwcarman/specular/releases/tag/0.2.0
 [0.1.0]: https://github.com/jwcarman/specular/releases/tag/0.1.0
