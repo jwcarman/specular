@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-14
+
 ### Added
 
 - `TypeRef.of(Type)` factory for wrapping arbitrary reflected types.
@@ -30,5 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Java 25+
 - Apache Commons Lang 3 (runtime)
 
-[Unreleased]: https://github.com/jwcarman/specular/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/jwcarman/specular/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/jwcarman/specular/releases/tag/0.2.0
 [0.1.0]: https://github.com/jwcarman/specular/releases/tag/0.1.0
