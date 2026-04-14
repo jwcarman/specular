@@ -63,11 +63,11 @@ class TypeRefResolutionTest {
 
   static class Concrete {
     public String greet(Map<String, Integer> env) {
-      return "";
+      return String.valueOf(env.size());
     }
   }
 
-  private static Parameter parameterOf(Class<?> owner, String methodName) throws Exception {
+  private static Parameter parameterOf(Class<?> owner, String methodName) {
     for (Method m : owner.getMethods()) {
       if (m.getName().equals(methodName)) {
         return m.getParameters()[0];
@@ -76,7 +76,7 @@ class TypeRefResolutionTest {
     throw new AssertionError("method not found: " + methodName);
   }
 
-  private static Method methodOf(Class<?> owner, String name) throws Exception {
+  private static Method methodOf(Class<?> owner, String name) {
     for (Method m : owner.getMethods()) {
       if (m.getName().equals(name)) {
         return m;
@@ -89,14 +89,14 @@ class TypeRefResolutionTest {
   class parameter_type {
 
     @Test
-    void resolves_type_variable_against_concrete_subtype() throws Exception {
+    void resolves_type_variable_against_concrete_subtype() {
       Parameter p = parameterOf(Handler.class, "handle");
       TypeRef<?> resolved = TypeRef.parameterType(p, StringHandler.class);
       assertThat(resolved.getType()).isEqualTo(String.class);
     }
 
     @Test
-    void resolves_nested_type_variable_against_concrete_subtype() throws Exception {
+    void resolves_nested_type_variable_against_concrete_subtype() {
       Parameter p = parameterOf(Box.class, "fill");
       TypeRef<?> resolved = TypeRef.parameterType(p, IntegerBox.class);
       assertThat(resolved.getType()).isInstanceOf(ParameterizedType.class);
@@ -106,7 +106,7 @@ class TypeRefResolutionTest {
     }
 
     @Test
-    void no_context_leaves_type_variable_unresolved() throws Exception {
+    void no_context_leaves_type_variable_unresolved() {
       Parameter p = parameterOf(Handler.class, "handle");
       TypeRef<?> resolved = TypeRef.parameterType(p);
       // Without a subtype context, T stays as a TypeVariable.
@@ -114,7 +114,7 @@ class TypeRefResolutionTest {
     }
 
     @Test
-    void concrete_method_is_unaffected_by_no_context() throws Exception {
+    void concrete_method_is_unaffected_by_no_context() {
       Parameter p = parameterOf(Concrete.class, "greet");
       TypeRef<?> resolved = TypeRef.parameterType(p);
       assertThat(resolved.getRawType()).isEqualTo(Map.class);
@@ -127,7 +127,7 @@ class TypeRefResolutionTest {
     }
 
     @Test
-    void null_context_is_rejected() throws Exception {
+    void null_context_is_rejected() {
       Parameter p = parameterOf(Handler.class, "handle");
       assertThatThrownBy(() -> TypeRef.parameterType(p, null))
           .isInstanceOf(NullPointerException.class);
@@ -138,14 +138,14 @@ class TypeRefResolutionTest {
   class return_type {
 
     @Test
-    void resolves_type_variable_against_concrete_subtype() throws Exception {
+    void resolves_type_variable_against_concrete_subtype() {
       Method m = methodOf(Handler.class, "handle");
       TypeRef<?> resolved = TypeRef.returnType(m, StringHandler.class);
       assertThat(resolved.getType()).isEqualTo(String.class);
     }
 
     @Test
-    void resolves_nested_type_variable_against_concrete_subtype() throws Exception {
+    void resolves_nested_type_variable_against_concrete_subtype() {
       Method m = methodOf(Box.class, "contents");
       TypeRef<?> resolved = TypeRef.returnType(m, IntegerBox.class);
       assertThat(resolved.getRawType()).isEqualTo(List.class);
@@ -154,7 +154,7 @@ class TypeRefResolutionTest {
     }
 
     @Test
-    void no_context_leaves_type_variable_unresolved() throws Exception {
+    void no_context_leaves_type_variable_unresolved() {
       Method m = methodOf(Handler.class, "handle");
       TypeRef<?> resolved = TypeRef.returnType(m);
       assertThat(resolved.getType().getTypeName()).isEqualTo("T");
@@ -188,7 +188,9 @@ class TypeRefResolutionTest {
         }
 
         @Override
-        public void fill(List<Integer> items) {}
+        public void fill(List<Integer> items) {
+          // no-op for test fixture
+        }
       }
       TypeRef<?> ref = TypeRef.of(NamedIntegerBox.class).supertype(Box.class);
       assertThat(ref.getRawType()).isEqualTo(Box.class);
@@ -204,8 +206,8 @@ class TypeRefResolutionTest {
 
     @Test
     void null_supertype_is_rejected() {
-      assertThatThrownBy(() -> TypeRef.of(String.class).supertype(null))
-          .isInstanceOf(NullPointerException.class);
+      var ref = TypeRef.of(String.class);
+      assertThatThrownBy(() -> ref.supertype(null)).isInstanceOf(NullPointerException.class);
     }
   }
 
