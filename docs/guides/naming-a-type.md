@@ -1,13 +1,20 @@
 # Naming a Type
 
-There are three ways to get a `TypeRef`, and which one you reach for depends on
-when the type is known.
+Which one you reach for depends on what you are naming, and on whether you need
+the compiler to keep track of the type argument for you.
 
-| When you know the type | Use |
-|---|---|
-| At compile time | `new TypeRef<List<String>>() {}` |
-| At run time, and the declared type matters | `where(...)` |
-| At run time, and it does not | `listOf`, `mapOf`, `parameterized`, ... |
+| What you are naming | Use | Compiler tracks the argument? |
+|---|---|---|
+| A type you can write out in source | `new TypeRef<List<String>>() {}` | yes |
+| A list, set, map, optional or array, whose argument you hold as a reference | `listOf`, `setOf`, `mapOf`, `optionalOf`, `arrayOf` | yes |
+| Your own generic class, whose argument you hold as a reference | `where` with `TypeParameter` | yes |
+| Any generic class, when `TypeRef<?>` is good enough | `parameterized` | no — you assert it |
+
+"Tracks the argument" means the result is a `TypeRef<Envelope<String>>` the
+compiler worked out for itself, rather than a `TypeRef<?>` or a claim it cannot
+check. It matters when you pass the reference to something with a matching type
+parameter, and not at all when you are only going to call `type()` or
+`rawClass()` on it.
 
 ## Known at compile time
 
@@ -101,8 +108,8 @@ Two guards keep this honest:
   It is always a mistake, and the message names the variables that *are*
   available.
 - `resolved()` throws if any variable is still unresolved. Filling some slots and
-  forgetting the rest would otherwise produce a reference whose declared type
-  claims to be concrete while the type it holds is not.
+  forgetting the rest would otherwise produce a reference whose compile-time
+  type claims to be concrete while the type it holds is not.
 
 ```java
 new TypeRef<Map<K, V>>() {}
@@ -121,8 +128,8 @@ combinators.
 
 ### Any generic class: `parameterized`
 
-When the declared type does not matter, `parameterized` builds a reference from
-a raw class and its arguments:
+When you do not need the compiler to track the argument, `parameterized` builds
+a reference from a raw class and its arguments:
 
 ```java
 TypeRef<Envelope<String>> ref =
@@ -141,8 +148,8 @@ TypeRef<Envelope<String>> ref =
     erasure of the raw class rather than of `T`, and the mismatch surfaces as a
     `ClassCastException` wherever a value is finally used.
 
-    `where` has no such gap. Prefer it when the declared type matters, and
-    round-trip anything built with `parameterized` once in a test.
+    `where` has no such gap. Prefer it whenever the result's compile-time type
+    matters, and round-trip anything built with `parameterized` once in a test.
 
 ## From reflection
 
