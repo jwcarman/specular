@@ -62,6 +62,7 @@ public abstract class TypeRef<T> {
 
   private static final String OTHER_MUST_NOT_BE_NULL = "other must not be null";
   private static final String CONTEXT_MUST_NOT_BE_NULL = "context must not be null";
+  private static final String PARAMETER_MUST_NOT_BE_NULL = "parameter must not be null";
 
   private final Type type;
 
@@ -285,7 +286,7 @@ public abstract class TypeRef<T> {
    * @return a type reference for the (possibly unresolved) parameter type
    */
   public static TypeRef<?> parameterType(Parameter parameter) {
-    Objects.requireNonNull(parameter, "parameter must not be null");
+    Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);
     return parameterType(parameter, parameter.getDeclaringExecutable().getDeclaringClass());
   }
 
@@ -299,7 +300,7 @@ public abstract class TypeRef<T> {
    * @return a type reference with variables substituted as far as {@code context} allows
    */
   public static TypeRef<?> parameterType(Parameter parameter, Class<?> context) {
-    Objects.requireNonNull(parameter, "parameter must not be null");
+    Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);
     Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
     return resolveAgainst(
         parameter.getParameterizedType(),
@@ -403,7 +404,7 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code parameter} or {@code argument} is null
    */
   public <X> TypeRef<T> where(TypeParameter<X> parameter, TypeRef<X> argument) {
-    Objects.requireNonNull(parameter, "parameter must not be null");
+    Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);
     Objects.requireNonNull(argument, "argument must not be null");
     Set<TypeVariable<?>> unresolved = unresolvedVariables();
     if (!unresolved.contains(parameter.variable)) {
