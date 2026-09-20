@@ -60,7 +60,7 @@
         <jacocoArgLine></jacocoArgLine>
 
         <!-- Dependency versions -->
-        <commons-lang3.version>3.17.0</commons-lang3.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
         <junit.version>5.11.3</junit.version>
         <assertj.version>3.26.3</assertj.version>
 
