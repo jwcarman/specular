@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.TypeVariable;
 import java.util.List;
 import java.util.Map;
@@ -222,6 +223,53 @@ class TypeRefApiTest {
       TypeRef<String> ref = TypeRef.of(String.class);
 
       assertThatThrownBy(() -> ref.typeArgument(null)).isInstanceOf(NullPointerException.class);
+    }
+  }
+
+  @Nested
+  class An_array_context {
+
+    @Test
+    void is_rejected_rather_than_treated_as_its_component() throws NoSuchMethodException {
+      Method describe = Holder.class.getMethod("describe");
+      TypeRef<Holder<String>[]> context = TypeRef.arrayOf(new TypeRef<Holder<String>>() {});
+
+      assertThatThrownBy(() -> TypeRef.returnType(describe, context))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("not a subtype");
+    }
+  }
+
+  @Nested
+  class An_array_of_void {
+
+    @Test
+    void is_rejected_with_a_clear_message() {
+      TypeRef<Void> voidRef = TypeRef.of(void.class);
+
+      assertThatThrownBy(() -> TypeRef.arrayOf(voidRef))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("void");
+    }
+  }
+
+  @Nested
+  class Asserting_a_type {
+
+    @Test
+    void lets_the_caller_name_what_reflection_could_not() throws NoSuchFieldException {
+      Field name = Holder.class.getField("name");
+
+      TypeRef<String> asserted = TypeRef.fieldType(name).as();
+
+      assertThat(asserted.rawClass()).isEqualTo(String.class);
+    }
+
+    @Test
+    void returns_the_same_captured_type() throws NoSuchFieldException {
+      Field name = Holder.class.getField("name");
+
+      assertThat(TypeRef.fieldType(name).as()).isEqualTo(TypeRef.of(String.class));
     }
   }
 }

@@ -19,8 +19,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.reflect.TypeUtils;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Nested;
@@ -208,5 +211,42 @@ class TypeRefHashingTest {
 
   private static <K, V, Z> TypeRef<Map<K, V>> mismatchedSubstitution(TypeRef<Z> other) {
     return new TypeRef<Map<K, V>>() {}.where(new TypeParameter<Z>() {}, other);
+  }
+
+  @Nested
+  class A_wildcard_with_no_declared_upper_bound {
+
+    /** Commons Lang can hand back `upper=[]`, which means `? extends Object`. */
+    private static WildcardType emptyUpperBounds() {
+      return new WildcardType() {
+        @Override
+        public Type[] getUpperBounds() {
+          return new Type[0];
+        }
+
+        @Override
+        public Type[] getLowerBounds() {
+          return new Type[0];
+        }
+      };
+    }
+
+    @Test
+    void hashes_like_an_explicitly_unbounded_wildcard() {
+      TypeRef<?> sparse = TypeRef.of(TypeUtils.parameterize(List.class, emptyUpperBounds()));
+      TypeRef<List<?>> captured = new TypeRef<>() {};
+
+      assertThat(sparse).isEqualTo(captured).hasSameHashCodeAs(captured);
+    }
+
+    @Test
+    void is_found_in_a_hash_map() {
+      Map<TypeRef<?>, String> cache = new HashMap<>();
+      cache.put(new TypeRef<List<?>>() {}, "registered");
+
+      TypeRef<?> sparse = TypeRef.of(TypeUtils.parameterize(List.class, emptyUpperBounds()));
+
+      assertThat(cache).containsEntry(sparse, "registered");
+    }
   }
 }

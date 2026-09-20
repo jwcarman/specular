@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `TypeRef.parameterType(Parameter, TypeRef)`, `returnType(Method, TypeRef)` and `fieldType(Field, TypeRef)` — resolve against a *parameterized* context. A `Class` context carries only what a class literal carries, so for `class Sub<X> extends Base<X>` the literal `Sub.class` has already discarded `X` and the member's variable stays unresolved. A reference keeps the argument: `returnType(get, new TypeRef<Sub<String>>() {})` resolves to `String`. This is the resolution `typeArgument` and `supertype` have always done for a parameterized receiver, now available to the member factories. Note that a bare `null` context is now ambiguous between the two overloads and needs a cast.
+- `TypeRef.as()` — asserts a type reflection cannot know. `TypeRef<String> name = TypeRef.fieldType(field).as();` The library cannot prove what a field holds, but the caller often can; this makes that claim explicit and greppable instead of an unchecked cast at the call site. Where the compiler *can* establish the type, `where` proves it instead.
 - `TypeRef.isAssignableTo(Type|Class|TypeRef)` — the mirror of `isAssignableFrom`, for when the value's type is what you hold and the target is what you are checking against.
 - `TypeRef.fieldType(Field)` and `fieldType(Field, Class<?> context)` — the third reflection source alongside parameters and return types, with the same context-resolution behaviour.
 - `TypeRef.arrayOf(TypeRef<E>)` — builds `E[]`. A `GenericArrayType` could not otherwise be constructed without JDK internals. An array of a non-generic type comes back as the array `Class`, matching how the JDK models it, so a built array type equals a captured one.
@@ -37,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `module-info.java` declaring the `org.jwcarman.specular` module. Specular set no `Automatic-Module-Name`, so on the module path it was named after the jar file. `requires org.apache.commons.lang3` is non-transitive: commons-lang3 types never appear in the public API.
 
 ### Fixed
+
+- **Substitution is now done by the library rather than by `TypeUtils.unrollVariables`,** which is not a substitution function. It does not descend into a `GenericArrayType`, it discards the bounds of a wildcard whose variable it cannot resolve, it does not rewrite an owner type, and it does not follow a binding that leads to another binding. Each of those left a type variable sitting in a type that claimed to be resolved. A second audit found all of them; one walker fixes them together:
+    - Capturing through two levels of subclass with rebinding (`class Mid2<X> extends Mid<X, List<X>>`) captured `List<X>` with `X` dangling. The first fix for indirect capture only handled one level.
+    - `fieldType`/`parameterType`/`returnType` never substituted into an array: `List<T>[]` came back with `T` intact.
+    - A wildcard bounded by an unresolvable variable silently lost its bound — `List<? extends T>` became `List<?>`, and the variable vanished from `unresolvedVariables()` so `resolved()` passed on a type that was not resolved. The context and no-context overloads disagreed about the same field.
+    - `typeArgument` and `supertype` did not follow a rebinding (`class B<U> extends A<List<U>>`, `class C extends B<String>` gave `List<U>`), so they disagreed with the member factories on the same hierarchy.
+    - `where` silently did nothing when the template was an array or the substitution was nested in one.
+- Two references naming the same wildcard could hash differently when one had an absent upper-bound array rather than an explicit `Object`. Equality read it as `? extends Object`; hashing did not. Hashing now normalises the same way.
+- `where` rejects a primitive argument, as the combinators already did, instead of fabricating `List<int>`.
+- An array context (`Sub<String>[]`) was accepted as if it were its component type, because `getTypeArguments` strips the array. It is now rejected.
+- `arrayOf(TypeRef.of(void.class))` threw `UnsupportedOperationException` from deep inside the JDK; it now reports what is wrong.
 
 - `isAssignableFrom` now rejects null consistently across all three overloads. The `Type` and `Class` overloads answered `true` for null (Commons Lang reads a null type as the null type, assignable to any reference type) while the `TypeRef` overload threw `NullPointerException`. All three now throw.
 

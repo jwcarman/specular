@@ -84,7 +84,10 @@ public abstract class TypeRef<T> {
   protected TypeRef() {
     // getClass() always extends TypeRef, so the bindings map is never null.
     Map<TypeVariable<?>, Type> bindings = TypeUtils.getTypeArguments(getClass(), TypeRef.class);
-    Type captured = bindings.get(TypeRef.class.getTypeParameters()[0]);
+    // A subclass may rebind on the way up — Mid2<X> extends Mid<X, List<X>> — so the argument
+    // bound to T can itself name variables this same map resolves.
+    Type captured =
+        TypeSubstitution.substitute(bindings.get(TypeRef.class.getTypeParameters()[0]), bindings);
     if (captured == null) {
       throw new IllegalArgumentException(
           "TypeRef must be created as a parameterized anonymous subclass");
@@ -163,6 +166,9 @@ public abstract class TypeRef<T> {
    */
   public static <E> TypeRef<E[]> arrayOf(TypeRef<E> component) {
     Objects.requireNonNull(component, "component must not be null");
+    if (void.class.equals(component.type)) {
+      throw new IllegalArgumentException("there is no array of void");
+    }
     // The JDK models an array of a non-generic type as a Class, not a GenericArrayType; matching
     // that keeps a built array type equal to the same type captured by an anonymous subclass.
     Type arrayType =
@@ -466,6 +472,10 @@ public abstract class TypeRef<T> {
     return resolveAgainst(field.getGenericType(), field.getDeclaringClass(), context.type);
   }
 
+  private static boolean isArray(Type type) {
+    return type instanceof GenericArrayType || (type instanceof Class<?> clazz && clazz.isArray());
+  }
+
   /**
    * The bindings {@code context} supplies for {@code declaringClass}'s variables, empty when {@code
    * context} is not a subtype of it.
@@ -480,7 +490,7 @@ public abstract class TypeRef<T> {
       TypeVariable<?>[] variables, Map<TypeVariable<?>, Type> typeArgs) {
     Type[] resolved =
         Arrays.stream(variables)
-            .map(typeArgs::get)
+            .map(variable -> TypeSubstitution.substitute(typeArgs.get(variable), typeArgs))
             .filter(Objects::nonNull)
             .filter(argument -> !(argument instanceof TypeVariable<?>))
             .toArray(Type[]::new);
@@ -491,6 +501,12 @@ public abstract class TypeRef<T> {
     if (declaringClass.equals(context)) {
       return of(type);
     }
+    // getTypeArguments() strips an array context down to its component, which would quietly
+    // accept `Sub<String>[]` as a context for a member of Sub.
+    if (isArray(context)) {
+      throw new IllegalArgumentException(
+          context.getTypeName() + " is not a subtype of " + declaringClass.getName());
+    }
     Map<TypeVariable<?>, Type> typeArgs =
         bindings(context, declaringClass)
             .orElseThrow(
@@ -499,8 +515,8 @@ public abstract class TypeRef<T> {
                         context.getTypeName()
                             + " is not a subtype of "
                             + declaringClass.getName()));
-    // An unresolvable variable leaves the declared type as the best available answer.
-    return of(Optional.ofNullable(TypeUtils.unrollVariables(typeArgs, type)).orElse(type));
+    // Unbound variables stay as they are, so the answer is as resolved as the context allows.
+    return of(TypeSubstitution.substitute(type, typeArgs));
   }
 
   /**
@@ -519,8 +535,9 @@ public abstract class TypeRef<T> {
    * envelopeOf(TypeRef.of(String.class));  // TypeRef<Envelope<String>>
    * }</pre>
    *
-   * <p>A variable this reference does not mention substitutes nothing and the reference comes back
-   * unchanged. Chain calls to fill more than one slot.
+   * <p>Chain calls to fill more than one slot. Substituting a variable this reference does not
+   * mention is rejected: it is always a mistake, and the message names the variables that are
+   * available.
    *
    * @param parameter the variable to replace
    * @param argument the type to put in its place
@@ -528,10 +545,16 @@ public abstract class TypeRef<T> {
    * @return a reference of the same declared type, with {@code parameter} replaced by {@code
    *     argument}
    * @throws NullPointerException if {@code parameter} or {@code argument} is null
+   * @throws IllegalArgumentException if this reference does not mention {@code parameter}'s
+   *     variable, or if {@code argument} names a primitive type
    */
   public <X> TypeRef<T> where(TypeParameter<X> parameter, TypeRef<X> argument) {
     Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);
     Objects.requireNonNull(argument, "argument must not be null");
+    if (argument.type instanceof Class<?> clazz && clazz.isPrimitive()) {
+      throw new IllegalArgumentException(
+          "a type argument cannot be primitive: " + clazz.getName() + " (use its wrapper)");
+    }
     Set<TypeVariable<?>> unresolved = unresolvedVariables();
     if (!unresolved.contains(parameter.variable)) {
       throw new IllegalArgumentException(
@@ -543,9 +566,7 @@ public abstract class TypeRef<T> {
     }
     Map<TypeVariable<?>, Type> bindings = new HashMap<>();
     bindings.put(parameter.variable, argument.type);
-    // The variable was just confirmed to occur in this type, so substitution always yields one.
-    Type substituted = TypeUtils.unrollVariables(bindings, type);
-    return new TypeRef<T>(substituted) {};
+    return new TypeRef<T>(TypeSubstitution.substitute(type, bindings)) {};
   }
 
   /**
@@ -758,9 +779,34 @@ public abstract class TypeRef<T> {
     // map() drops a missing binding; filter() drops one that resolved only to another
     // variable. Either way the answer is "not resolvable here".
     return bindings(type, definingClass)
-        .map(typeArgs -> typeArgs.get(variable))
+        .map(typeArgs -> TypeSubstitution.substitute(typeArgs.get(variable), typeArgs))
         .filter(argument -> !(argument instanceof TypeVariable<?>))
         .map(TypeRef::of);
+  }
+
+  /**
+   * Returns this same reference, typed as {@code TypeRef<U>}.
+   *
+   * <p>Reflection cannot know what a {@link Field} or {@link Method} holds, so the factories that
+   * read one return {@code TypeRef<?>}. When <em>you</em> know — the field named {@code firstName}
+   * holds a {@code String} — this lets you say so:
+   *
+   * <pre>{@code
+   * TypeRef<String> firstName = TypeRef.fieldType(field).as();
+   * }</pre>
+   *
+   * <p>This is an assertion, not a proof. Nothing checks that {@code U} matches the captured type,
+   * and a wrong one surfaces as a {@link ClassCastException} wherever a value is finally used —
+   * exactly like a cast you would otherwise write yourself. The difference is that it is written
+   * here, visibly, instead of as an unchecked cast at every call site. Where the compiler *can*
+   * establish the type, prefer {@link #where(TypeParameter, TypeRef)}, which proves it.
+   *
+   * @param <U> the type you are claiming this reference names
+   * @return this reference, typed as claimed
+   */
+  @SuppressWarnings("unchecked") // The caller is asserting U; see the contract above.
+  public <U> TypeRef<U> as() {
+    return (TypeRef<U>) this;
   }
 
   /**
@@ -903,10 +949,12 @@ public abstract class TypeRef<T> {
       case GenericArrayType array -> 31 * hash(array.getGenericComponentType());
       case WildcardType wildcard -> {
         int result = 1;
-        for (Type bound : wildcard.getUpperBounds()) {
+        // An empty upper-bound array means `? extends Object`, and equality reads it that way.
+        // Hashing has to agree, or two equal references hash apart.
+        for (Type bound : TypeUtils.getImplicitUpperBounds(wildcard)) {
           result = result * 31 + hash(bound);
         }
-        for (Type bound : wildcard.getLowerBounds()) {
+        for (Type bound : TypeUtils.getImplicitLowerBounds(wildcard)) {
           result = result * 31 + hash(bound);
         }
         yield result;

@@ -32,10 +32,20 @@ import java.util.StringJoiner;
  */
 final class SyntheticParameterizedType implements ParameterizedType {
 
+  private final Type ownerType;
   private final Class<?> raw;
   private final Type[] arguments;
 
   SyntheticParameterizedType(Class<?> raw, Type[] arguments) {
+    this(raw.getDeclaringClass(), raw, arguments);
+  }
+
+  /**
+   * @param ownerType the enclosing type, which substitution may have rewritten — {@code
+   *     Outer<String>} rather than the raw {@code Outer} its declaring class would give
+   */
+  SyntheticParameterizedType(Type ownerType, Class<?> raw, Type[] arguments) {
+    this.ownerType = ownerType;
     this.raw = raw;
     this.arguments = arguments;
   }
@@ -52,7 +62,7 @@ final class SyntheticParameterizedType implements ParameterizedType {
 
   @Override
   public Type getOwnerType() {
-    return raw.getDeclaringClass();
+    return ownerType;
   }
 
   @Override

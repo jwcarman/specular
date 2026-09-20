@@ -114,12 +114,12 @@ class TypeRefRobustnessTest {
   class When_a_type_variable_survives_resolution {
 
     @Test
-    void the_declared_variable_is_kept_rather_than_throwing() throws NoSuchMethodException {
-      // Sub<X> binds Base's T to X, which is itself unresolved, so there is no concrete
-      // answer. The declared type comes back unchanged rather than as null.
+    void resolution_goes_as_far_as_the_context_allows() throws NoSuchMethodException {
+      // Sub<X> binds Base's T to X. X has no binding of its own, so it stays — the answer is
+      // expressed in the context's own variable rather than the declaring class's.
       TypeRef<?> resolved = TypeRef.returnType(method(Base.class, "get"), Sub.class);
 
-      assertThat(resolved.type().getTypeName()).isEqualTo("T");
+      assertThat(resolved.type().getTypeName()).isEqualTo("X");
     }
 
     @Test

@@ -75,8 +75,9 @@ class TypeRefContextTest {
     }
 
     @Test
-    void leaves_the_variable_when_only_the_class_is_known() throws NoSuchMethodException {
-      assertThat(TypeRef.returnType(get(), Sub.class).type().getTypeName()).isEqualTo("T");
+    void leaves_a_variable_when_only_the_class_is_known() throws NoSuchMethodException {
+      // Sub.class binds T to Sub's own X, which nothing binds further.
+      assertThat(TypeRef.returnType(get(), Sub.class).type().getTypeName()).isEqualTo("X");
     }
 
     @Test
