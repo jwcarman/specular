@@ -264,6 +264,34 @@ class TypeSubstitutionTest {
     }
   }
 
+  public static class Deeply<T> {
+    public class Mid<U> {
+      public class Deep<V> {}
+    }
+  }
+
+  @Nested
+  class An_inner_class_nested_two_levels_deep {
+
+    @Test
+    void keeps_the_arguments_of_every_enclosing_class() {
+      TypeRef<Deeply<String>.Mid<Integer>.Deep<Long>> captured = new TypeRef<>() {};
+
+      assertThat(captured.supertype(Deeply.Mid.Deep.class)).isEqualTo(captured);
+    }
+
+    @Test
+    void is_found_in_a_hash_map_after_projection() {
+      Map<TypeRef<?>, String> cache = new HashMap<>();
+      cache.put(new TypeRef<Deeply<String>.Mid<Integer>.Deep<Long>>() {}, "registered");
+
+      TypeRef<?> projected =
+          new TypeRef<Deeply<String>.Mid<Integer>.Deep<Long>>() {}.supertype(Deeply.Mid.Deep.class);
+
+      assertThat(cache).containsEntry(projected, "registered");
+    }
+  }
+
   @Nested
   class An_inner_class_of_a_generic_outer {
 

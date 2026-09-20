@@ -486,8 +486,12 @@ public abstract class TypeRef<T> {
     if (outerVariables.length == 0) {
       return declaring;
     }
+    // Recurse: an enclosing class may itself be enclosed, and each level carries its own
+    // arguments. Outer<String>.Mid<Integer>.Deep<Long> is only fully named when Mid's owner
+    // is Outer<String> rather than a raw Outer.
+    Type enclosing = owner(declaring, typeArgs);
     return resolveAll(outerVariables, typeArgs)
-        .<Type>map(resolved -> new SyntheticParameterizedType(declaring, resolved))
+        .<Type>map(resolved -> new SyntheticParameterizedType(enclosing, declaring, resolved))
         .orElse(declaring);
   }
 
@@ -566,6 +570,8 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code parameter} or {@code argument} is null
    * @throws IllegalArgumentException if this reference does not mention {@code parameter}'s
    *     variable, or if {@code argument} names a primitive type
+   * @throws IllegalStateException if {@code argument} names the very variable being substituted,
+   *     which would expand forever
    */
   public <X> TypeRef<T> where(TypeParameter<X> parameter, TypeRef<X> argument) {
     Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);

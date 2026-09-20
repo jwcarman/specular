@@ -216,8 +216,10 @@ class InteropTest {
   @Nested
   class A_type_that_made_the_round_trip {
 
-    // Gson and Guava canonicalise into their own ParameterizedType implementations, which
-    // Specular reads back structurally. Jackson does not — see below.
+    // Gson canonicalises into its own ParameterizedType, which Specular reads back
+    // structurally. Guava hands the same instance back from of(Type), so a round trip through
+    // it only means something when Guava has rebuilt the type — hence the resolveType below.
+    // Jackson cannot make the trip at all; see the last two tests.
 
     @Test
     void comes_back_equal_through_gson() throws NoSuchFieldException {
@@ -230,7 +232,22 @@ class InteropTest {
     }
 
     @Test
-    void comes_back_equal_through_guava() throws NoSuchFieldException {
+    void lets_guava_resolve_a_variable_out_of_a_specular_type() throws NoSuchFieldException {
+      TypeRef<?> original = resolvedItems();
+
+      // of(Type) hands the same instance straight back, which would prove nothing. Asking
+      // Guava to resolve List's own variable makes it read the arguments out of Specular's
+      // type and hand back one of its own.
+      java.lang.reflect.Type rebuilt =
+          com.google.common.reflect.TypeToken.of(original.type())
+              .resolveType(List.class.getTypeParameters()[0])
+              .getType();
+
+      assertThat(TypeRef.of(rebuilt)).isEqualTo(TypeRef.of(String.class));
+    }
+
+    @Test
+    void survives_guava_handing_the_same_instance_back() throws NoSuchFieldException {
       TypeRef<?> original = resolvedItems();
 
       TypeRef<?> returned =
