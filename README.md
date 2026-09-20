@@ -22,7 +22,7 @@ General-purpose reflection utilities for Java. A single class â€” `TypeRef<T>` â
 <dependency>
     <groupId>org.jwcarman</groupId>
     <artifactId>specular</artifactId>
-    <version>0.3.0</version>
+    <version>0.4.0</version>
 </dependency>
 ```
 

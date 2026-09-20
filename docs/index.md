@@ -79,7 +79,7 @@ away. A half-substituted template is an error at the point you build it.
 <dependency>
     <groupId>org.jwcarman</groupId>
     <artifactId>specular</artifactId>
-    <version>0.3.0</version>
+    <version>0.4.0</version>
 </dependency>
 ```
 
