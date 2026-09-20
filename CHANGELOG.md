@@ -70,7 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TypeRef.listOf`, `setOf`, `optionalOf` and `mapOf` — build a reference to a parameterized JDK collection type from the references to its arguments, keeping the compiler in the loop when the argument type is only known at run time.
 - `TypeRef.parameterized(Class<? super T>, TypeRef<?>...)` — the same for any other generic class. Arity and primitive arguments are checked at construction; the raw class literal acts as a compile-time witness for `T`.
 
-### Fixed
 
 - `TypeRef.supertype(Class)` results are now usable as hash-based cache keys. The projected reference was `equals` to the same type captured by an anonymous subclass but hashed differently, so the two could not find each other in a `HashMap`. Parameterized types built by this library now follow the JDK's own equality, hashing and type-name conventions.
 
