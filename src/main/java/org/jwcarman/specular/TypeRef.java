@@ -241,8 +241,7 @@ public abstract class TypeRef<T> {
    * is created, {@link #rawClass()} reports the erasure of {@code raw} rather than of {@code T},
    * and the mismatch surfaces as a {@link ClassCastException} wherever a value is finally used.
    * {@link #where(TypeParameter, TypeRef)} has no such gap and should be preferred when the
-   * result's compile-time type matters; reach for this when it does not, and round-trip the
-   * test.
+   * result's compile-time type matters; reach for this when it does not, and round-trip the test.
    *
    * @param raw the generic class, such as {@code Envelope.class}
    * @param arguments one type reference per type parameter of {@code raw}, in declaration order;
@@ -588,8 +587,8 @@ public abstract class TypeRef<T> {
    * Returns this reference, having checked that it names no type variable.
    *
    * <p>The terminal call of a {@link #where(TypeParameter, TypeRef)} chain: substituting some of a
-   * template's variables and forgetting the rest yields a reference whose compile-time type claims to
-   * be concrete while its captured type is not. This turns that into an error at the point it is
+   * template's variables and forgetting the rest yields a reference whose compile-time type claims
+   * to be concrete while its captured type is not. This turns that into an error at the point it is
    * made rather than a puzzle at the point it is used.
    *
    * <pre>{@code
