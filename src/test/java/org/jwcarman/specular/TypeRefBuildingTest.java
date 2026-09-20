@@ -90,6 +90,7 @@ class TypeRefBuildingTest {
     void builds_any_generic_class_from_its_arguments() {
       TypeRef<Envelope<String>> built =
           TypeRef.parameterized(Envelope.class, TypeRef.of(String.class));
+
       assertThat(built).isEqualTo(new TypeRef<Envelope<String>>() {});
     }
 

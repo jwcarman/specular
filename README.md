@@ -86,7 +86,30 @@ list.equals(new TypeRef<List<String>>() {});  // true — and same hashCode
 
 The raw class literal is a compile-time witness for `T`, so `parameterized(Set.class, e)`
 won't compile into a `TypeRef<List<String>>`. Arity is checked at construction, and primitive
-type arguments are rejected.
+type arguments are rejected. What it cannot check is the identity and order of the arguments,
+or `T` naming a *subtype* of `raw` — for those, use `where` below.
+
+### Building typed references with no unchecked cast
+
+`where` substitutes a type variable in a template capture. The static type comes from the
+capture, so the compiler proves it rather than you asserting it — this is the path to reach
+for when the declared type matters:
+
+```java
+static <E> TypeRef<Envelope<E>> envelopeOf(TypeRef<E> element) {
+    return new TypeRef<Envelope<E>>() {}
+        .where(new TypeParameter<>() {}, element)
+        .resolved();
+}
+
+envelopeOf(TypeRef.of(String.class));  // TypeRef<Envelope<String>>, no cast anywhere
+```
+
+Chain `where` to fill several slots. `resolved()` is the terminal call: it throws if any
+variable is still unresolved, so substituting some of a template's variables and forgetting
+the rest fails where you wrote it instead of much later. Substituting a variable the type
+doesn't mention is rejected outright. `unresolvedVariables()` reports what's left if you
+want to check without throwing.
 
 ### Type introspection
 

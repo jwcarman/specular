@@ -15,16 +15,21 @@
  */
 package org.jwcarman.specular;
 
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import org.apache.commons.lang3.reflect.TypeUtils;
 
 /**
@@ -52,12 +57,13 @@ public abstract class TypeRef<T> {
    *     raw class and assignability answers are meaningless
    */
   protected TypeRef() {
-    Type superclass = getClass().getGenericSuperclass();
-    if (!(superclass instanceof ParameterizedType parameterized)) {
+    // getClass() always extends TypeRef, so the bindings map is never null.
+    Map<TypeVariable<?>, Type> bindings = TypeUtils.getTypeArguments(getClass(), TypeRef.class);
+    Type captured = bindings.get(TypeRef.class.getTypeParameters()[0]);
+    if (captured == null) {
       throw new IllegalArgumentException(
           "TypeRef must be created as a parameterized anonymous subclass");
     }
-    Type captured = parameterized.getActualTypeArguments()[0];
     if (captured instanceof TypeVariable<?>) {
       throw new IllegalArgumentException(
           "TypeRef cannot capture the type variable "
@@ -165,9 +171,16 @@ public abstract class TypeRef<T> {
    * <p>The class literal is a witness for {@code T}: because a raw type is a supertype of each of
    * its parameterizations, {@code Class<? super T>} lets the compiler reject {@code
    * TypeRef<List<String>> ref = parameterized(Set.class, element)}. The arity of {@code arguments}
-   * is checked at construction, and a class with no type parameters is rejected. What remains
-   * unchecked is the identity and order of {@code arguments} against {@code T}'s own type
-   * arguments.
+   * is checked at construction, and a class with no type parameters is rejected.
+   *
+   * <p>What remains unchecked is the identity and order of {@code arguments} against {@code T}'s
+   * own type arguments, and {@code T} naming a <em>subtype</em> of {@code raw} ({@code
+   * TypeRef<ArrayList<String>>} built from {@code List.class}). Neither fails here: the reference
+   * is created, {@link #rawClass()} reports the erasure of {@code raw} rather than of {@code T},
+   * and the mismatch surfaces as a {@link ClassCastException} wherever a value is finally used.
+   * {@link #where(TypeParameter, TypeRef)} has no such gap and should be preferred when the
+   * declared type matters; reach for this when it does not, and round-trip the result once in a
+   * test.
    *
    * @param raw the generic class, such as {@code Envelope.class}
    * @param arguments one type reference per type parameter of {@code raw}, in declaration order;
@@ -277,7 +290,130 @@ public abstract class TypeRef<T> {
       throw new IllegalArgumentException(
           context.getName() + " is not a subtype of " + declaringClass.getName());
     }
-    return of(TypeUtils.unrollVariables(typeArgs, type));
+    Type unrolled = TypeUtils.unrollVariables(typeArgs, type);
+    return of(unrolled == null ? type : unrolled);
+  }
+
+  /**
+   * Substitutes {@code argument} for {@code parameter} throughout this reference's type, returning
+   * the reference the compiler expects.
+   *
+   * <p>This is the one way to build a fully parameterized reference with no unchecked cast and no
+   * unproven claim. The static type comes from the template capture, so the compiler — not the
+   * caller — establishes it:
+   *
+   * <pre>{@code
+   * static <E> TypeRef<Envelope<E>> envelopeOf(TypeRef<E> element) {
+   *   return new TypeRef<Envelope<E>>() {}.where(new TypeParameter<>() {}, element);
+   * }
+   *
+   * envelopeOf(TypeRef.of(String.class));  // TypeRef<Envelope<String>>
+   * }</pre>
+   *
+   * <p>A variable this reference does not mention substitutes nothing and the reference comes back
+   * unchanged. Chain calls to fill more than one slot.
+   *
+   * @param parameter the variable to replace
+   * @param argument the type to put in its place
+   * @param <X> the type being substituted
+   * @return a reference of the same declared type, with {@code parameter} replaced by {@code
+   *     argument}
+   * @throws NullPointerException if {@code parameter} or {@code argument} is null
+   */
+  public <X> TypeRef<T> where(TypeParameter<X> parameter, TypeRef<X> argument) {
+    Objects.requireNonNull(parameter, "parameter must not be null");
+    Objects.requireNonNull(argument, "argument must not be null");
+    Set<TypeVariable<?>> unresolved = unresolvedVariables();
+    if (!unresolved.contains(parameter.variable())) {
+      throw new IllegalArgumentException(
+          type.getTypeName()
+              + " has no type variable "
+              + parameter.variable().getName()
+              + " to substitute"
+              + (unresolved.isEmpty() ? "" : " (it has " + names(unresolved) + ")"));
+    }
+    Map<TypeVariable<?>, Type> bindings = new HashMap<>();
+    bindings.put(parameter.variable(), argument.type);
+    // The variable was just confirmed to occur in this type, so substitution always yields one.
+    Type substituted = TypeUtils.unrollVariables(bindings, type);
+    return new TypeRef<T>(substituted) {};
+  }
+
+  /**
+   * Returns the type variables this reference still carries, in the order they appear.
+   *
+   * <p>A reference built by substitution, or resolved against a context that could not bind every
+   * variable, may still name one. Such a reference cannot describe a concrete type, so {@link
+   * #rawClass()} on a bare variable throws and assignability answers are meaningless.
+   *
+   * @return the unresolved variables, empty if the captured type is fully concrete
+   */
+  public Set<TypeVariable<?>> unresolvedVariables() {
+    Set<TypeVariable<?>> found = new LinkedHashSet<>();
+    collectVariables(type, found);
+    return found;
+  }
+
+  /**
+   * Returns this reference, having checked that it names no type variable.
+   *
+   * <p>The terminal call of a {@link #where(TypeParameter, TypeRef)} chain: substituting some of a
+   * template's variables and forgetting the rest yields a reference whose declared type claims to
+   * be concrete while its captured type is not. This turns that into an error at the point it is
+   * made rather than a puzzle at the point it is used.
+   *
+   * <pre>{@code
+   * return new TypeRef<Map<K, V>>() {}
+   *     .where(new TypeParameter<K>() {}, key)
+   *     .where(new TypeParameter<V>() {}, value)
+   *     .resolved();
+   * }</pre>
+   *
+   * @return this reference
+   * @throws IllegalStateException if any type variable remains unresolved
+   */
+  public TypeRef<T> resolved() {
+    Set<TypeVariable<?>> unresolved = unresolvedVariables();
+    if (!unresolved.isEmpty()) {
+      throw new IllegalStateException(
+          type.getTypeName() + " still has unresolved type variable(s): " + names(unresolved));
+    }
+    return this;
+  }
+
+  private static String names(Set<TypeVariable<?>> variables) {
+    StringJoiner joined = new StringJoiner(", ");
+    for (TypeVariable<?> variable : variables) {
+      joined.add(variable.getName());
+    }
+    return joined.toString();
+  }
+
+  private static void collectVariables(Type type, Set<TypeVariable<?>> into) {
+    switch (type) {
+      case null -> {
+        // nothing to collect
+      }
+      case TypeVariable<?> variable -> into.add(variable);
+      case ParameterizedType parameterized -> {
+        collectVariables(parameterized.getOwnerType(), into);
+        for (Type argument : parameterized.getActualTypeArguments()) {
+          collectVariables(argument, into);
+        }
+      }
+      case GenericArrayType array -> collectVariables(array.getGenericComponentType(), into);
+      case WildcardType wildcard -> {
+        for (Type bound : wildcard.getUpperBounds()) {
+          collectVariables(bound, into);
+        }
+        for (Type bound : wildcard.getLowerBounds()) {
+          collectVariables(bound, into);
+        }
+      }
+      default -> {
+        // a Class, or a Type implementation with no nested structure
+      }
+    }
   }
 
   /**
@@ -325,11 +461,17 @@ public abstract class TypeRef<T> {
    * Returns the erased class of the captured type: {@code Map.class} for {@code Map<String,
    * Integer>}, the class itself for a non-generic type.
    *
-   * <p>This method contains the only unchecked cast in the codebase. It is sound by construction: a
-   * {@code TypeRef<T>} captures {@code T} and nothing else, so the erasure of the captured type is
-   * the erasure of {@code T}. Returning {@code Class<T>} rather than {@code Class<?>} means callers
-   * can narrow a value with {@link Class#cast} — a checked cast — instead of writing an unchecked
-   * cast of their own at every call site.
+   * <p>This method contains the only unchecked cast in the codebase. It is sound for every
+   * reference whose {@code T} the compiler established — one captured by an anonymous subclass,
+   * returned by {@link #of(Class)} or a combinator, or built by {@link #where(TypeParameter,
+   * TypeRef)} — because such a {@code TypeRef<T>} captures {@code T} and nothing else, so the
+   * erasure of the captured type is the erasure of {@code T}. Returning {@code Class<T>} rather
+   * than {@code Class<?>} means those callers can narrow a value with {@link Class#cast} — a
+   * checked cast — instead of writing an unchecked cast of their own at every call site.
+   *
+   * <p>It is <em>not</em> sound for a reference from {@link #parameterized(Class, TypeRef...)},
+   * whose {@code T} is asserted by the caller rather than proved; see that method for what it does
+   * and does not check.
    *
    * @return the erased class of {@code T}
    * @throws IllegalArgumentException if the captured type has no single erased class, as for an
@@ -369,7 +511,14 @@ public abstract class TypeRef<T> {
       return Optional.empty();
     }
     Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(type, definingClass);
-    return Optional.ofNullable(typeArgs.get(typeParameters[index])).map(TypeRef::of);
+    if (typeArgs == null) {
+      return Optional.empty();
+    }
+    Type argument = typeArgs.get(typeParameters[index]);
+    if (argument == null || argument instanceof TypeVariable<?>) {
+      return Optional.empty();
+    }
+    return Optional.of(of(argument));
   }
 
   /**
@@ -391,9 +540,17 @@ public abstract class TypeRef<T> {
       return of(supertype);
     }
     Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(type, supertype);
+    if (typeArgs == null) {
+      throw new IllegalArgumentException(
+          type.getTypeName() + " is not a subtype of " + supertype.getName());
+    }
     Type[] resolved = new Type[vars.length];
     for (int i = 0; i < vars.length; i++) {
-      resolved[i] = typeArgs.get(vars[i]);
+      Type argument = typeArgs.get(vars[i]);
+      if (argument == null || argument instanceof TypeVariable<?>) {
+        return of(supertype);
+      }
+      resolved[i] = argument;
     }
     return of(new SyntheticParameterizedType(supertype, resolved));
   }
@@ -402,12 +559,51 @@ public abstract class TypeRef<T> {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (!(o instanceof TypeRef<?> other)) return false;
-    return type.equals(other.type);
+    return TypeUtils.equals(type, other.type);
   }
 
+  /**
+   * Hashes the captured type structurally rather than delegating to the {@link Type}
+   * implementation's own {@code hashCode}.
+   *
+   * <p>A reference can hold a type from any number of implementations: one reflected by the JDK,
+   * one built by this library, one produced by Commons Lang while resolving variables. Those
+   * implementations agree on equality but not on hashing, so delegating would leave two equal
+   * references hashing differently — and unable to find each other in a hash-based collection.
+   *
+   * @return a hash derived from the structure of the captured type
+   */
   @Override
   public int hashCode() {
-    return type.hashCode();
+    return hash(type);
+  }
+
+  private static int hash(Type type) {
+    return switch (type) {
+      case null -> 0;
+      case Class<?> clazz -> clazz.hashCode();
+      case ParameterizedType parameterized -> {
+        int result = hash(parameterized.getRawType()) ^ hash(parameterized.getOwnerType());
+        for (Type argument : parameterized.getActualTypeArguments()) {
+          result = result * 31 + hash(argument);
+        }
+        yield result;
+      }
+      case GenericArrayType array -> 31 * hash(array.getGenericComponentType());
+      case WildcardType wildcard -> {
+        int result = 1;
+        for (Type bound : wildcard.getUpperBounds()) {
+          result = result * 31 + hash(bound);
+        }
+        for (Type bound : wildcard.getLowerBounds()) {
+          result = result * 31 + hash(bound);
+        }
+        yield result;
+      }
+      case TypeVariable<?> variable ->
+          Objects.hash(variable.getName(), variable.getGenericDeclaration());
+      default -> type.getTypeName().hashCode();
+    };
   }
 
   @Override
