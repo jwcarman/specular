@@ -63,6 +63,7 @@ public abstract class TypeRef<T> {
   private static final String OTHER_MUST_NOT_BE_NULL = "other must not be null";
   private static final String CONTEXT_MUST_NOT_BE_NULL = "context must not be null";
   private static final String PARAMETER_MUST_NOT_BE_NULL = "parameter must not be null";
+  private static final String FIELD_MUST_NOT_BE_NULL = "field must not be null";
 
   private final Type type;
 
@@ -309,6 +310,35 @@ public abstract class TypeRef<T> {
   }
 
   /**
+   * Creates a {@link TypeRef} for a method parameter, with type variables resolved against a
+   * <em>parameterized</em> context.
+   *
+   * <p>A {@link Class} context can only carry what a class literal carries, so {@code Sub.class}
+   * for {@code class Sub<X> extends Base<X>} has already discarded {@code X} and leaves the
+   * parameter's type variable unresolved. A reference keeps the argument, and the variable resolves
+   * all the way:
+   *
+   * <pre>{@code
+   * TypeRef.parameterType(parameter, Sub.class);                      // TypeRef<T>
+   * TypeRef.parameterType(parameter, new TypeRef<Sub<String>>() {});  // TypeRef<String>
+   * }</pre>
+   *
+   * @param parameter the parameter
+   * @param context the type whose bindings should be applied
+   * @return a type reference with variables substituted as far as {@code context} allows
+   * @throws NullPointerException if {@code parameter} or {@code context} is null
+   * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
+   */
+  public static TypeRef<?> parameterType(Parameter parameter, TypeRef<?> context) {
+    Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);
+    Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
+    return resolveAgainst(
+        parameter.getParameterizedType(),
+        parameter.getDeclaringExecutable().getDeclaringClass(),
+        context.type);
+  }
+
+  /**
    * Creates a {@link TypeRef} for a method's return type, with type variables resolved against the
    * method's declaring class.
    *
@@ -343,7 +373,7 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code field} is null
    */
   public static TypeRef<?> fieldType(Field field) {
-    Objects.requireNonNull(field, "field must not be null");
+    Objects.requireNonNull(field, FIELD_MUST_NOT_BE_NULL);
     return fieldType(field, field.getDeclaringClass());
   }
 
@@ -359,19 +389,53 @@ public abstract class TypeRef<T> {
    * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
    */
   public static TypeRef<?> fieldType(Field field, Class<?> context) {
-    Objects.requireNonNull(field, "field must not be null");
+    Objects.requireNonNull(field, FIELD_MUST_NOT_BE_NULL);
     Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
     return resolveAgainst(field.getGenericType(), field.getDeclaringClass(), context);
   }
 
-  private static TypeRef<?> resolveAgainst(Type type, Class<?> declaringClass, Class<?> context) {
+  /**
+   * Creates a {@link TypeRef} for a method's return type, with type variables resolved against a
+   * <em>parameterized</em> context. See {@link #parameterType(Parameter, TypeRef)} for what a
+   * reference context can resolve that a {@link Class} context cannot.
+   *
+   * @param method the method
+   * @param context the type whose bindings should be applied
+   * @return a type reference with variables substituted as far as {@code context} allows
+   * @throws NullPointerException if {@code method} or {@code context} is null
+   * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
+   */
+  public static TypeRef<?> returnType(Method method, TypeRef<?> context) {
+    Objects.requireNonNull(method, "method must not be null");
+    Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
+    return resolveAgainst(method.getGenericReturnType(), method.getDeclaringClass(), context.type);
+  }
+
+  /**
+   * Creates a {@link TypeRef} for a field, with type variables resolved against a
+   * <em>parameterized</em> context. See {@link #parameterType(Parameter, TypeRef)} for what a
+   * reference context can resolve that a {@link Class} context cannot.
+   *
+   * @param field the field
+   * @param context the type whose bindings should be applied
+   * @return a type reference with variables substituted as far as {@code context} allows
+   * @throws NullPointerException if {@code field} or {@code context} is null
+   * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
+   */
+  public static TypeRef<?> fieldType(Field field, TypeRef<?> context) {
+    Objects.requireNonNull(field, FIELD_MUST_NOT_BE_NULL);
+    Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
+    return resolveAgainst(field.getGenericType(), field.getDeclaringClass(), context.type);
+  }
+
+  private static TypeRef<?> resolveAgainst(Type type, Class<?> declaringClass, Type context) {
     if (declaringClass.equals(context)) {
       return of(type);
     }
     Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(context, declaringClass);
     if (typeArgs == null) {
       throw new IllegalArgumentException(
-          context.getName() + " is not a subtype of " + declaringClass.getName());
+          context.getTypeName() + " is not a subtype of " + declaringClass.getName());
     }
     Type unrolled = TypeUtils.unrollVariables(typeArgs, type);
     return of(unrolled == null ? type : unrolled);

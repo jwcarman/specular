@@ -95,6 +95,40 @@ Passing a context that is not a subtype of the declaring class is a mistake, and
 throws `IllegalArgumentException` rather than silently handing back the
 unresolved type.
 
+## A parameterized context
+
+A `Class` context can only carry what a class literal carries. When the context
+class is *itself* generic, the literal has already discarded its arguments:
+
+```java
+class Base<T> { public T get() { ... } }
+class Sub<X> extends Base<X> { }
+
+TypeRef.returnType(get, Sub.class).type();   // T — Sub.class never held the argument
+```
+
+Pass a reference instead and the variable resolves all the way:
+
+```java
+TypeRef.returnType(get, new TypeRef<Sub<String>>() {}).type();   // String.class
+```
+
+All three factories take a `TypeRef` context, and it nests:
+
+```java
+TypeRef.fieldType(items, new TypeRef<Sub<Map<String, Integer>>>() {});
+// TypeRef<List<Map<String, Integer>>>
+```
+
+This is the same resolution the instance methods have always done — `typeArgument`
+and `supertype` accept a parameterized receiver — now available to the member
+factories too.
+
+!!! note "Passing null"
+    Because the context is overloaded on `Class` and `TypeRef`, a bare `null`
+    is ambiguous and will not compile. Cast it — `(Class<?>) null` — if you are
+    writing a test that checks the rejection.
+
 ## When a variable cannot be resolved
 
 Resolution is best-effort, and it is honest about what it could not do. Two

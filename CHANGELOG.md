@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `TypeRef.parameterType(Parameter, TypeRef)`, `returnType(Method, TypeRef)` and `fieldType(Field, TypeRef)` — resolve against a *parameterized* context. A `Class` context carries only what a class literal carries, so for `class Sub<X> extends Base<X>` the literal `Sub.class` has already discarded `X` and the member's variable stays unresolved. A reference keeps the argument: `returnType(get, new TypeRef<Sub<String>>() {})` resolves to `String`. This is the resolution `typeArgument` and `supertype` have always done for a parameterized receiver, now available to the member factories. Note that a bare `null` context is now ambiguous between the two overloads and needs a cast.
 - `TypeRef.isAssignableTo(Type|Class|TypeRef)` — the mirror of `isAssignableFrom`, for when the value's type is what you hold and the target is what you are checking against.
 - `TypeRef.fieldType(Field)` and `fieldType(Field, Class<?> context)` — the third reflection source alongside parameters and return types, with the same context-resolution behaviour.
 - `TypeRef.arrayOf(TypeRef<E>)` — builds `E[]`. A `GenericArrayType` could not otherwise be constructed without JDK internals. An array of a non-generic type comes back as the array `Class`, matching how the JDK models it, so a built array type equals a captured one.

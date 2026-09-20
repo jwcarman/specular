@@ -129,7 +129,7 @@ class TypeRefResolutionTest {
     @Test
     void null_context_is_rejected() {
       Parameter p = parameterOf(Handler.class, "handle");
-      assertThatThrownBy(() -> TypeRef.parameterType(p, null))
+      assertThatThrownBy(() -> TypeRef.parameterType(p, (Class<?>) null))
           .isInstanceOf(NullPointerException.class);
     }
 
