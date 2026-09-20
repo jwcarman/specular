@@ -38,6 +38,10 @@ import org.apache.commons.lang3.reflect.TypeUtils;
  *
  * @param <T> the captured type variable
  */
+@SuppressWarnings("java:S2326") // T is a phantom type parameter, and that is the mechanism: it is
+// what lets the compiler match a TypeParameter<K> to a TypeRef<K> in where(), so a substitution is
+// proved rather than asserted. Removing it would delete the type safety this class exists to
+// provide. Guava's TypeParameter is identical.
 public abstract class TypeParameter<T> {
 
   final TypeVariable<?> variable;

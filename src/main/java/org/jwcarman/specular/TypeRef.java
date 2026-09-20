@@ -24,6 +24,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -64,6 +65,7 @@ public abstract class TypeRef<T> {
   private static final String CONTEXT_MUST_NOT_BE_NULL = "context must not be null";
   private static final String PARAMETER_MUST_NOT_BE_NULL = "parameter must not be null";
   private static final String FIELD_MUST_NOT_BE_NULL = "field must not be null";
+  private static final String METHOD_MUST_NOT_BE_NULL = "method must not be null";
 
   private final Type type;
 
@@ -286,6 +288,10 @@ public abstract class TypeRef<T> {
    * @param parameter the parameter
    * @return a type reference for the (possibly unresolved) parameter type
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> parameterType(Parameter parameter) {
     Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);
     return parameterType(parameter, parameter.getDeclaringExecutable().getDeclaringClass());
@@ -300,6 +306,10 @@ public abstract class TypeRef<T> {
    * @param context the concrete class whose bindings should be applied
    * @return a type reference with variables substituted as far as {@code context} allows
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> parameterType(Parameter parameter, Class<?> context) {
     Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);
     Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
@@ -329,6 +339,10 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code parameter} or {@code context} is null
    * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> parameterType(Parameter parameter, TypeRef<?> context) {
     Objects.requireNonNull(parameter, PARAMETER_MUST_NOT_BE_NULL);
     Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
@@ -345,8 +359,12 @@ public abstract class TypeRef<T> {
    * @param method the method
    * @return a type reference for the (possibly unresolved) return type
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> returnType(Method method) {
-    Objects.requireNonNull(method, "method must not be null");
+    Objects.requireNonNull(method, METHOD_MUST_NOT_BE_NULL);
     return returnType(method, method.getDeclaringClass());
   }
 
@@ -358,8 +376,12 @@ public abstract class TypeRef<T> {
    * @param context the concrete class whose bindings should be applied
    * @return a type reference with variables substituted as far as {@code context} allows
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> returnType(Method method, Class<?> context) {
-    Objects.requireNonNull(method, "method must not be null");
+    Objects.requireNonNull(method, METHOD_MUST_NOT_BE_NULL);
     Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
     return resolveAgainst(method.getGenericReturnType(), method.getDeclaringClass(), context);
   }
@@ -372,6 +394,10 @@ public abstract class TypeRef<T> {
    * @return a type reference for the (possibly unresolved) field type
    * @throws NullPointerException if {@code field} is null
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> fieldType(Field field) {
     Objects.requireNonNull(field, FIELD_MUST_NOT_BE_NULL);
     return fieldType(field, field.getDeclaringClass());
@@ -388,6 +414,10 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code field} or {@code context} is null
    * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> fieldType(Field field, Class<?> context) {
     Objects.requireNonNull(field, FIELD_MUST_NOT_BE_NULL);
     Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
@@ -405,8 +435,12 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code method} or {@code context} is null
    * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> returnType(Method method, TypeRef<?> context) {
-    Objects.requireNonNull(method, "method must not be null");
+    Objects.requireNonNull(method, METHOD_MUST_NOT_BE_NULL);
     Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
     return resolveAgainst(method.getGenericReturnType(), method.getDeclaringClass(), context.type);
   }
@@ -422,23 +456,51 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code field} or {@code context} is null
    * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
    */
+  @SuppressWarnings("java:S1452") // A member's generic type is not known at compile time, so
+  // TypeRef<?> is the honest return type. Naming a concrete parameter would assert something the
+  // compiler cannot check, and erasing to Class<?> would discard the very type arguments this
+  // library exists to preserve.
   public static TypeRef<?> fieldType(Field field, TypeRef<?> context) {
     Objects.requireNonNull(field, FIELD_MUST_NOT_BE_NULL);
     Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
     return resolveAgainst(field.getGenericType(), field.getDeclaringClass(), context.type);
   }
 
+  /**
+   * The bindings {@code context} supplies for {@code declaringClass}'s variables, empty when {@code
+   * context} is not a subtype of it.
+   */
+  private static Optional<Map<TypeVariable<?>, Type>> bindings(
+      Type context, Class<?> declaringClass) {
+    return Optional.ofNullable(TypeUtils.getTypeArguments(context, declaringClass));
+  }
+
+  /** Resolves every variable or none: empty if any is unbound or bound only to another variable. */
+  private static Optional<Type[]> resolveAll(
+      TypeVariable<?>[] variables, Map<TypeVariable<?>, Type> typeArgs) {
+    Type[] resolved =
+        Arrays.stream(variables)
+            .map(typeArgs::get)
+            .filter(Objects::nonNull)
+            .filter(argument -> !(argument instanceof TypeVariable<?>))
+            .toArray(Type[]::new);
+    return resolved.length == variables.length ? Optional.of(resolved) : Optional.empty();
+  }
+
   private static TypeRef<?> resolveAgainst(Type type, Class<?> declaringClass, Type context) {
     if (declaringClass.equals(context)) {
       return of(type);
     }
-    Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(context, declaringClass);
-    if (typeArgs == null) {
-      throw new IllegalArgumentException(
-          context.getTypeName() + " is not a subtype of " + declaringClass.getName());
-    }
-    Type unrolled = TypeUtils.unrollVariables(typeArgs, type);
-    return of(unrolled == null ? type : unrolled);
+    Map<TypeVariable<?>, Type> typeArgs =
+        bindings(context, declaringClass)
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        context.getTypeName()
+                            + " is not a subtype of "
+                            + declaringClass.getName()));
+    // An unresolvable variable leaves the declared type as the best available answer.
+    return of(Optional.ofNullable(TypeUtils.unrollVariables(typeArgs, type)).orElse(type));
   }
 
   /**
@@ -693,15 +755,12 @@ public abstract class TypeRef<T> {
     if (!(variable.getGenericDeclaration() instanceof Class<?> definingClass)) {
       return Optional.empty();
     }
-    Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(type, definingClass);
-    if (typeArgs == null) {
-      return Optional.empty();
-    }
-    Type argument = typeArgs.get(variable);
-    if (argument == null || argument instanceof TypeVariable<?>) {
-      return Optional.empty();
-    }
-    return Optional.of(of(argument));
+    // map() drops a missing binding; filter() drops one that resolved only to another
+    // variable. Either way the answer is "not resolvable here".
+    return bindings(type, definingClass)
+        .map(typeArgs -> typeArgs.get(variable))
+        .filter(argument -> !(argument instanceof TypeVariable<?>))
+        .map(TypeRef::of);
   }
 
   /**
@@ -740,11 +799,12 @@ public abstract class TypeRef<T> {
    *     unresolved type variable or a wildcard
    */
   public Class<T> rawClass() {
-    Class<?> raw = TypeUtils.getRawType(type, null);
-    if (raw == null) {
-      throw new IllegalArgumentException("Type has no single erased class: " + type.getTypeName());
-    }
-    return uncheckedTypeToken(raw);
+    return Optional.ofNullable(TypeUtils.getRawType(type, null))
+        .map(TypeRef::<T>uncheckedTypeToken)
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Type has no single erased class: " + type.getTypeName()));
   }
 
   /**
@@ -793,20 +853,17 @@ public abstract class TypeRef<T> {
     if (vars.length == 0) {
       return of(supertype);
     }
-    Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(type, supertype);
-    if (typeArgs == null) {
-      throw new IllegalArgumentException(
-          type.getTypeName() + " is not a subtype of " + supertype.getName());
-    }
-    Type[] resolved = new Type[vars.length];
-    for (int i = 0; i < vars.length; i++) {
-      Type argument = typeArgs.get(vars[i]);
-      if (argument == null || argument instanceof TypeVariable<?>) {
-        return of(supertype);
-      }
-      resolved[i] = argument;
-    }
-    return of(new SyntheticParameterizedType(supertype, resolved));
+    Map<TypeVariable<?>, Type> typeArgs =
+        bindings(type, supertype)
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        type.getTypeName() + " is not a subtype of " + supertype.getName()));
+    // All or nothing: a supertype whose arguments cannot all be resolved is reported raw
+    // rather than half-built.
+    return resolveAll(vars, typeArgs)
+        .<TypeRef<?>>map(resolved -> of(new SyntheticParameterizedType(supertype, resolved)))
+        .orElseGet(() -> of(supertype));
   }
 
   @Override
