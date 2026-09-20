@@ -4,6 +4,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Java](https://img.shields.io/badge/Java-25%2B-orange)](https://openjdk.org/)
 [![Maven Central](https://img.shields.io/maven-central/v/org.jwcarman/specular)](https://central.sonatype.com/artifact/org.jwcarman/specular)
+[![javadoc](https://javadoc.io/badge2/org.jwcarman/specular/javadoc.svg)](https://javadoc.io/doc/org.jwcarman/specular)
 
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=jwcarman_specular&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=jwcarman_specular)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=jwcarman_specular&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=jwcarman_specular)
@@ -12,6 +13,8 @@
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=jwcarman_specular&metric=coverage)](https://sonarcloud.io/summary/new_code?id=jwcarman_specular)
 
 General-purpose reflection utilities for Java. A single class — `TypeRef<T>` — wraps `java.lang.reflect.Type` with a super-type-token constructor, generic-aware assignability, full type-variable resolution against a subtype hierarchy, and ergonomic type-argument extraction.
+
+**📖 API reference: [javadoc.io/doc/org.jwcarman/specular](https://javadoc.io/doc/org.jwcarman/specular)**
 
 ## Installation
 
