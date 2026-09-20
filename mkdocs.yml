@@ -79,6 +79,7 @@ nav:
       - Resolving Type Variables: guides/resolving.md
       - Assignability: guides/assignability.md
       - Using References as Keys: guides/cache-keys.md
+      - Working With Other Libraries: guides/interop.md
       - Choosing a Library: guides/alternatives.md
   - Reference:
       - API (Javadoc): https://javadoc.io/doc/org.jwcarman/specular
