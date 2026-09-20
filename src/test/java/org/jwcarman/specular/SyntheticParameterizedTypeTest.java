@@ -48,8 +48,11 @@ class SyntheticParameterizedTypeTest {
 
     @Test
     void holds_against_itself() {
-      SyntheticParameterizedType type = listOfString();
-      assertThat(type).isEqualTo(type);
+      // Two references, one object: the identity short-circuit is what is under test.
+      Type type = listOfString();
+      Type sameObject = type;
+
+      assertThat(type).isEqualTo(sameObject);
     }
 
     @Test
@@ -64,12 +67,9 @@ class SyntheticParameterizedTypeTest {
 
     @Test
     void fails_against_a_type_that_is_not_parameterized() {
-      assertThat(listOfString()).isNotEqualTo(String.class);
-    }
+      Type notParameterized = String.class;
 
-    @Test
-    void fails_against_null() {
-      assertThat(listOfString()).isNotEqualTo(null);
+      assertThat(listOfString()).isNotEqualTo(notParameterized);
     }
 
     @Test

@@ -1,0 +1,76 @@
+/*
+ * Specular's signature element: a type name and its reflection.
+ *
+ * The shared jwcarman theme lives next to this file in jwcarman.css and carries
+ * nothing project-specific. This file holds only the mirror.
+ */
+
+.jw-mirror {
+  margin: 2rem auto 2.25rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: clamp(0.95rem, 2.6vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  user-select: none;
+}
+
+.jw-mirror__face {
+  color: var(--jw-cobalt);
+}
+
+/* The reflection: flipped, faded, and fading further as it falls away. */
+.jw-mirror__glass {
+  display: block;
+  margin-top: 0.15em;
+  transform: scaleY(-1);
+  background: linear-gradient(
+    to top,
+    var(--jw-cobalt) 0%,
+    color-mix(in srgb, var(--jw-cobalt) 22%, transparent) 65%,
+    transparent 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0.55;
+}
+
+[data-md-color-scheme="slate"] .jw-mirror__face {
+  color: var(--jw-cobalt-soft);
+}
+
+[data-md-color-scheme="slate"] .jw-mirror__glass {
+  background: linear-gradient(
+    to top,
+    var(--jw-cobalt-soft) 0%,
+    color-mix(in srgb, var(--jw-cobalt-soft) 22%, transparent) 65%,
+    transparent 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .jw-mirror__glass {
+    transition: opacity 200ms ease;
+  }
+}
+
+/* A compact two-column comparison used on the alternatives page. */
+.jw-compare {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin: 1.25rem 0;
+}
+
+.jw-compare > div {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  padding: 0.85rem 1rem;
+}
+
+.jw-compare h3 {
+  margin-top: 0;
+}

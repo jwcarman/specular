@@ -14,7 +14,7 @@
 
 General-purpose reflection utilities for Java. A single class — `TypeRef<T>` — wraps `java.lang.reflect.Type` with a super-type-token constructor, generic-aware assignability, full type-variable resolution against a subtype hierarchy, and ergonomic type-argument extraction.
 
-**📖 API reference: [javadoc.io/doc/org.jwcarman/specular](https://javadoc.io/doc/org.jwcarman/specular)**
+**📖 Documentation: [jwcarman.github.io/specular](https://jwcarman.github.io/specular/) · API reference: [javadoc.io](https://javadoc.io/doc/org.jwcarman/specular)**
 
 ## Installation
 

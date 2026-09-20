@@ -1,0 +1,85 @@
+#
+# Copyright © 2026 James Carman
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+site_name: Specular
+site_description: General-purpose reflection utilities for Java.
+site_url: https://jwcarman.github.io/specular/
+repo_url: https://github.com/jwcarman/specular
+repo_name: jwcarman/specular
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+validation:
+  anchors: warn
+  links:
+    absolute_links: warn
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Source Sans 3
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+
+extra_css:
+  - stylesheets/jwcarman.css
+  - stylesheets/specular.css
+
+nav:
+  - Home: index.md
+  - Guides:
+      - Getting Started: guides/getting-started.md
+      - Naming a Type: guides/naming-a-type.md
+      - Resolving Type Variables: guides/resolving.md
+      - Assignability: guides/assignability.md
+      - Using References as Keys: guides/cache-keys.md
+      - Choosing a Library: guides/alternatives.md
+  - Reference:
+      - API (Javadoc): https://javadoc.io/doc/org.jwcarman/specular
+      - Changelog: https://github.com/jwcarman/specular/blob/main/CHANGELOG.md

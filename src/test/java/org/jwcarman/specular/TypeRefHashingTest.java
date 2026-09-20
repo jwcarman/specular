@@ -115,7 +115,9 @@ class TypeRefHashingTest {
 
     @Test
     void are_not_equal_to_a_non_reference() {
-      assertThat(new TypeRef<List<String>>() {}).isNotEqualTo("not a reference");
+      Object notAReference = "not a reference";
+
+      assertThat(new TypeRef<List<String>>() {}).isNotEqualTo(notAReference);
     }
   }
 
@@ -157,9 +159,11 @@ class TypeRefHashingTest {
 
     @Test
     void equals_itself() {
-      TypeParameter<?> parameter = parameterOfList();
+      // Two references, one object: the identity short-circuit is what is under test.
+      Object parameter = parameterOfList();
+      Object sameObject = parameter;
 
-      assertThat(parameter).isEqualTo(parameter);
+      assertThat(parameter).isEqualTo(sameObject);
     }
 
     @Test
@@ -169,7 +173,9 @@ class TypeRefHashingTest {
 
     @Test
     void does_not_equal_a_non_parameter() {
-      assertThat(parameterOfList()).isNotEqualTo("not a parameter");
+      Object notAParameter = "not a parameter";
+
+      assertThat(parameterOfList()).isNotEqualTo(notAParameter);
     }
 
     @Test

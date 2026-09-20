@@ -61,14 +61,18 @@ class SyntheticGenericArrayTypeTest {
 
     @Test
     void equals_itself() {
-      SyntheticGenericArrayType type = built();
+      // Two references, one object: the identity short-circuit is what is under test.
+      Type type = built();
+      Type sameObject = type;
 
-      assertThat(type).isEqualTo(type);
+      assertThat(type).isEqualTo(sameObject);
     }
 
     @Test
     void does_not_equal_a_type_that_is_not_an_array() {
-      assertThat(built()).isNotEqualTo(String.class);
+      Type notAnArray = String.class;
+
+      assertThat(built()).isNotEqualTo(notAnArray);
     }
 
     @Test
