@@ -16,7 +16,9 @@
 package org.jwcarman.specular;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -146,6 +148,30 @@ class TypeRefAssignableTest {
       TypeRef<List<String>> target = new TypeRef<>() {};
       TypeRef<ArrayList<String>> source = new TypeRef<>() {};
       assertThat(target.isAssignableFrom(source)).isTrue();
+    }
+  }
+
+  @Nested
+  class A_null_source {
+
+    private final TypeRef<String> target = TypeRef.of(String.class);
+
+    @Test
+    void is_rejected_by_the_type_overload() {
+      assertThatThrownBy(() -> target.isAssignableFrom((Type) null))
+          .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void is_rejected_by_the_class_overload() {
+      assertThatThrownBy(() -> target.isAssignableFrom((Class<?>) null))
+          .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void is_rejected_by_the_reference_overload() {
+      assertThatThrownBy(() -> target.isAssignableFrom((TypeRef<?>) null))
+          .isInstanceOf(NullPointerException.class);
     }
   }
 }

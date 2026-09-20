@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `isAssignableFrom` now rejects null consistently across all three overloads. The `Type` and `Class` overloads answered `true` for null (Commons Lang reads a null type as the null type, assignable to any reference type) while the `TypeRef` overload threw `NullPointerException`. All three now throw.
+
 - **Capture through an indirect subclass read the wrong type argument.** The constructor took the immediate superclass's first type argument, which is only `TypeRef`'s `T` when the anonymous subclass extends `TypeRef` directly. `class Mid<A, B> extends TypeRef<B>` captured `A`. Resolution now walks the hierarchy, which also makes `new Concrete() {}` work where `Concrete extends TypeRef<String>` previously threw.
 - **`typeArgument` and `supertype` threw `NullPointerException`** when the captured type was not a subtype of the class asked about — reachable with no warning through `parameterized`, and through any raw reference. `typeArgument` now returns `Optional.empty()` and `supertype` throws `IllegalArgumentException` naming the mismatch.
 - **`supertype` could build a parameterized type holding a `null` argument** for a raw self-reference such as `of(List.class).supertype(List.class)`, which then threw from `toString()` while `hashCode()` and `rawClass()` silently succeeded. It now returns the raw supertype when an argument cannot be resolved. `typeArgument` likewise returns `Optional.empty()` rather than a reference to a dangling type variable.
@@ -43,6 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `TypeRef.supertype(Class)` results are now usable as hash-based cache keys. The projected reference was `equals` to the same type captured by an anonymous subclass but hashed differently, so the two could not find each other in a `HashMap`. Parameterized types built by this library now follow the JDK's own equality, hashing and type-name conventions.
+
+### Documentation
+
+- `of(Class)` no longer describes itself as being for "a non-generic class" — it accepts a generic class and captures it raw, with the consequences that follow for `typeArgument` and `supertype`.
+- `type()` documents the full set of shapes it can return, including `GenericArrayType`, `WildcardType` and an unresolved `TypeVariable`.
+- The capturing constructor warns about `var ref = new TypeRef<>() {}`, which has nothing to infer from and silently captures `Object`.
+- The class documentation records two limits: a type built by `parameterized` for an inner class of a *generic* outer class cannot carry the outer's type arguments, so it is not equal to the same type captured by an anonymous subclass; and type-walking operations recurse without a depth limit, which a pathologically nested type could exhaust. Types come from class files or in-process code, so the latter is not reachable from untrusted input.
 
 ## [0.3.0] - 2026-04-14
 

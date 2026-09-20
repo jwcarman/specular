@@ -42,6 +42,18 @@ import org.apache.commons.lang3.reflect.TypeUtils;
  * Type type = ref.type(); // ParameterizedType: Map<String, Integer>
  * }</pre>
  *
+ * <p>References are value-based: two that name the same type are equal and hash alike whichever
+ * {@link Type} implementation each holds, so they are safe as keys in a hash-based collection. One
+ * exception: a type built by {@link #parameterized(Class, TypeRef...)} for an inner class of a
+ * <em>generic</em> outer class cannot record the outer class's own type arguments, so {@code
+ * Outer<String>.Inner<Integer>} built here is not equal to the same type captured by an anonymous
+ * subclass.
+ *
+ * <p>Operations that walk a type — equality, hashing, {@code toString} and assignability — recurse
+ * over its structure without a depth limit, so a pathologically nested type (thousands of levels)
+ * can exhaust the stack. Types originate from compiled class files or from code already running in
+ * the process, so this is not reachable from untrusted input.
+ *
  * @param <T> the captured type
  */
 public abstract class TypeRef<T> {
@@ -50,6 +62,10 @@ public abstract class TypeRef<T> {
 
   /**
    * Captures the type argument supplied by the anonymous subclass.
+   *
+   * <p>Beware the diamond with {@code var}: {@code var ref = new TypeRef<>() {}} has nothing to
+   * infer from and captures {@link Object}, silently. Give the reference an explicit type — {@code
+   * TypeRef<List<String>> ref = new TypeRef<>() {}} — or write the argument out.
    *
    * @throws IllegalArgumentException if the subclass is not parameterized, or if the captured
    *     argument is a type variable — {@code new TypeRef<T>() {}} inside a generic method or class
@@ -78,7 +94,14 @@ public abstract class TypeRef<T> {
   }
 
   /**
-   * Creates a {@link TypeRef} for a non-generic class.
+   * Creates a {@link TypeRef} for a class.
+   *
+   * <p>A generic class is accepted and captured <em>raw</em>: {@code of(List.class)} holds {@code
+   * List}, not {@code List<Something>}. A raw reference cannot answer questions about its type
+   * arguments — {@link #typeArgument(Class, int)} returns {@link Optional#empty()} and {@link
+   * #supertype(Class)} projects to the raw supertype. To name the arguments, capture the type with
+   * an anonymous subclass, use a combinator such as {@link #listOf(TypeRef)}, or build one with
+   * {@link #where(TypeParameter, TypeRef)}.
    *
    * @param type the class
    * @param <T> the type
@@ -423,8 +446,12 @@ public abstract class TypeRef<T> {
    *
    * @param other the candidate source type
    * @return {@code true} if assignment-compatible
+   * @throws NullPointerException if {@code other} is null. Commons Lang reads a null {@link Type}
+   *     as the null type, which is assignable to every reference type; answering {@code true} for a
+   *     caller who simply had nothing to pass is worse than saying so.
    */
   public boolean isAssignableFrom(Type other) {
+    Objects.requireNonNull(other, "other must not be null");
     return TypeUtils.isAssignable(other, type);
   }
 
@@ -433,8 +460,10 @@ public abstract class TypeRef<T> {
    *
    * @param other the candidate source type
    * @return {@code true} if assignment-compatible
+   * @throws NullPointerException if {@code other} is null
    */
   public boolean isAssignableFrom(Class<?> other) {
+    Objects.requireNonNull(other, "other must not be null");
     return isAssignableFrom((Type) other);
   }
 
@@ -443,13 +472,21 @@ public abstract class TypeRef<T> {
    *
    * @param other the candidate source type
    * @return {@code true} if assignment-compatible
+   * @throws NullPointerException if {@code other} is null
    */
   public boolean isAssignableFrom(TypeRef<?> other) {
+    Objects.requireNonNull(other, "other must not be null");
     return isAssignableFrom(other.type);
   }
 
   /**
-   * Returns the captured type, which may be a {@link Class} or a {@link ParameterizedType}.
+   * Returns the captured type.
+   *
+   * <p>Most often a {@link Class} or a {@link ParameterizedType}, but a reference obtained from
+   * {@link #of(Type)}, {@link #parameterType(Parameter)} or {@link #typeArgument(Class, int)} may
+   * hold any {@link Type}: a {@link java.lang.reflect.GenericArrayType}, a {@link
+   * java.lang.reflect.WildcardType}, or an unresolved {@link TypeVariable}. {@link
+   * #unresolvedVariables()} reports whether variables remain.
    *
    * @return the captured type
    */
