@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `TypeRef.parameterType(Parameter, Class<?>)` and `TypeRef.returnType(Method, Class<?>)` now throw `IllegalArgumentException` when the context class is not a subtype of the declaring class. Previously this silently returned the unresolved type, masking caller bugs.
 
+### Fixed
+
+- `TypeRef.supertype(Class)` results are now usable as hash-based cache keys. The projected reference was `equals` to the same type captured by an anonymous subclass but hashed differently, so the two could not find each other in a `HashMap`. Parameterized types built by this library now follow the JDK's own equality, hashing and type-name conventions.
+
 ## [0.3.0] - 2026-04-14
 
 ### Breaking changes
