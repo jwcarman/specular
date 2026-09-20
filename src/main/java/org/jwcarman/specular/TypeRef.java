@@ -15,6 +15,7 @@
  */
 package org.jwcarman.specular;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -22,6 +23,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -57,6 +59,9 @@ import org.apache.commons.lang3.reflect.TypeUtils;
  * @param <T> the captured type
  */
 public abstract class TypeRef<T> {
+
+  private static final String OTHER_MUST_NOT_BE_NULL = "other must not be null";
+  private static final String CONTEXT_MUST_NOT_BE_NULL = "context must not be null";
 
   private final Type type;
 
@@ -137,6 +142,30 @@ public abstract class TypeRef<T> {
    */
   public static <E> TypeRef<List<E>> listOf(TypeRef<E> element) {
     return new TypeRef<List<E>>(parameterizedType(List.class, element)) {};
+  }
+
+  /**
+   * A reference to {@code E[]} built from the reference to {@code E}.
+   *
+   * <p>A {@link GenericArrayType} cannot otherwise be built without reaching into JDK internals, so
+   * this is the only way to name an array of a parameterized type at run time. An array of a
+   * non-generic type comes back as the corresponding array {@link Class}, which is how the JDK
+   * itself models it.
+   *
+   * @param component the component type
+   * @param <E> the component type
+   * @return a reference to {@code E[]}
+   * @throws NullPointerException if {@code component} is null
+   */
+  public static <E> TypeRef<E[]> arrayOf(TypeRef<E> component) {
+    Objects.requireNonNull(component, "component must not be null");
+    // The JDK models an array of a non-generic type as a Class, not a GenericArrayType; matching
+    // that keeps a built array type equal to the same type captured by an anonymous subclass.
+    Type arrayType =
+        component.type instanceof Class<?> clazz
+            ? clazz.arrayType()
+            : new SyntheticGenericArrayType(component.type);
+    return new TypeRef<E[]>(arrayType) {};
   }
 
   /**
@@ -271,7 +300,7 @@ public abstract class TypeRef<T> {
    */
   public static TypeRef<?> parameterType(Parameter parameter, Class<?> context) {
     Objects.requireNonNull(parameter, "parameter must not be null");
-    Objects.requireNonNull(context, "context must not be null");
+    Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
     return resolveAgainst(
         parameter.getParameterizedType(),
         parameter.getDeclaringExecutable().getDeclaringClass(),
@@ -300,8 +329,38 @@ public abstract class TypeRef<T> {
    */
   public static TypeRef<?> returnType(Method method, Class<?> context) {
     Objects.requireNonNull(method, "method must not be null");
-    Objects.requireNonNull(context, "context must not be null");
+    Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
     return resolveAgainst(method.getGenericReturnType(), method.getDeclaringClass(), context);
+  }
+
+  /**
+   * Creates a {@link TypeRef} for a field, with type variables resolved against the field's
+   * declaring class.
+   *
+   * @param field the field
+   * @return a type reference for the (possibly unresolved) field type
+   * @throws NullPointerException if {@code field} is null
+   */
+  public static TypeRef<?> fieldType(Field field) {
+    Objects.requireNonNull(field, "field must not be null");
+    return fieldType(field, field.getDeclaringClass());
+  }
+
+  /**
+   * Creates a {@link TypeRef} for a field, with type variables resolved against {@code context}'s
+   * class hierarchy. Use this when the declaring class has type variables bound by a concrete
+   * subtype.
+   *
+   * @param field the field
+   * @param context the concrete class whose bindings should be applied
+   * @return a type reference with variables substituted as far as {@code context} allows
+   * @throws NullPointerException if {@code field} or {@code context} is null
+   * @throws IllegalArgumentException if {@code context} is not a subtype of the declaring class
+   */
+  public static TypeRef<?> fieldType(Field field, Class<?> context) {
+    Objects.requireNonNull(field, "field must not be null");
+    Objects.requireNonNull(context, CONTEXT_MUST_NOT_BE_NULL);
+    return resolveAgainst(field.getGenericType(), field.getDeclaringClass(), context);
   }
 
   private static TypeRef<?> resolveAgainst(Type type, Class<?> declaringClass, Class<?> context) {
@@ -347,16 +406,16 @@ public abstract class TypeRef<T> {
     Objects.requireNonNull(parameter, "parameter must not be null");
     Objects.requireNonNull(argument, "argument must not be null");
     Set<TypeVariable<?>> unresolved = unresolvedVariables();
-    if (!unresolved.contains(parameter.variable())) {
+    if (!unresolved.contains(parameter.variable)) {
       throw new IllegalArgumentException(
           type.getTypeName()
               + " has no type variable "
-              + parameter.variable().getName()
+              + parameter.variable.getName()
               + " to substitute"
               + (unresolved.isEmpty() ? "" : " (it has " + names(unresolved) + ")"));
     }
     Map<TypeVariable<?>, Type> bindings = new HashMap<>();
-    bindings.put(parameter.variable(), argument.type);
+    bindings.put(parameter.variable, argument.type);
     // The variable was just confirmed to occur in this type, so substitution always yields one.
     Type substituted = TypeUtils.unrollVariables(bindings, type);
     return new TypeRef<T>(substituted) {};
@@ -451,7 +510,7 @@ public abstract class TypeRef<T> {
    *     caller who simply had nothing to pass is worse than saying so.
    */
   public boolean isAssignableFrom(Type other) {
-    Objects.requireNonNull(other, "other must not be null");
+    Objects.requireNonNull(other, OTHER_MUST_NOT_BE_NULL);
     return TypeUtils.isAssignable(other, type);
   }
 
@@ -463,7 +522,7 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code other} is null
    */
   public boolean isAssignableFrom(Class<?> other) {
-    Objects.requireNonNull(other, "other must not be null");
+    Objects.requireNonNull(other, OTHER_MUST_NOT_BE_NULL);
     return isAssignableFrom((Type) other);
   }
 
@@ -475,8 +534,109 @@ public abstract class TypeRef<T> {
    * @throws NullPointerException if {@code other} is null
    */
   public boolean isAssignableFrom(TypeRef<?> other) {
-    Objects.requireNonNull(other, "other must not be null");
+    Objects.requireNonNull(other, OTHER_MUST_NOT_BE_NULL);
     return isAssignableFrom(other.type);
+  }
+
+  /**
+   * Returns {@code true} if a value of this reference's captured type is assignable to {@code
+   * other} — the mirror of {@link #isAssignableFrom(Type)}, for when the value's type is what you
+   * hold and the target is what you are checking against.
+   *
+   * @param other the candidate target type
+   * @return {@code true} if assignment-compatible
+   * @throws NullPointerException if {@code other} is null
+   */
+  public boolean isAssignableTo(Type other) {
+    Objects.requireNonNull(other, OTHER_MUST_NOT_BE_NULL);
+    return TypeUtils.isAssignable(type, other);
+  }
+
+  /**
+   * {@link #isAssignableTo(Type)} overload for a raw {@link Class}.
+   *
+   * @param other the candidate target type
+   * @return {@code true} if assignment-compatible
+   * @throws NullPointerException if {@code other} is null
+   */
+  public boolean isAssignableTo(Class<?> other) {
+    Objects.requireNonNull(other, OTHER_MUST_NOT_BE_NULL);
+    return isAssignableTo((Type) other);
+  }
+
+  /**
+   * {@link #isAssignableTo(Type)} overload for another {@link TypeRef}.
+   *
+   * @param other the candidate target type
+   * @return {@code true} if assignment-compatible
+   * @throws NullPointerException if {@code other} is null
+   */
+  public boolean isAssignableTo(TypeRef<?> other) {
+    Objects.requireNonNull(other, OTHER_MUST_NOT_BE_NULL);
+    return isAssignableTo(other.type);
+  }
+
+  /**
+   * Returns the component type if this reference names an array.
+   *
+   * <p>Covers both shapes an array takes in reflection: a {@link Class} such as {@code
+   * String[].class}, and a {@link GenericArrayType} such as {@code List<String>[]}.
+   *
+   * @return the component type, or {@link Optional#empty()} if this is not an array
+   */
+  public Optional<TypeRef<?>> componentType() {
+    return switch (type) {
+      case Class<?> clazz when clazz.isArray() -> Optional.of(of(clazz.getComponentType()));
+      case GenericArrayType array -> Optional.of(of(array.getGenericComponentType()));
+      default -> Optional.empty();
+    };
+  }
+
+  /**
+   * Returns this type's own type arguments, in declaration order.
+   *
+   * <p>These are the arguments of the captured type itself, not of a supertype: use {@link
+   * #typeArgument(Class, int)} or {@link #supertype(Class)} to ask about a supertype's arguments.
+   *
+   * @return the type arguments, empty if the captured type is not parameterized
+   */
+  public List<TypeRef<?>> typeArguments() {
+    if (!(type instanceof ParameterizedType parameterized)) {
+      return List.of();
+    }
+    List<TypeRef<?>> arguments = new ArrayList<>();
+    for (Type argument : parameterized.getActualTypeArguments()) {
+      arguments.add(of(argument));
+    }
+    return List.copyOf(arguments);
+  }
+
+  /**
+   * Returns the concrete type bound to {@code variable} within this reference's hierarchy, if
+   * resolvable.
+   *
+   * <p>Naming the variable is sturdier than naming a position: {@code
+   * typeArgument(Map.class.getTypeParameters()[1])} says which parameter is meant even if the
+   * declaring class later gains one.
+   *
+   * @param variable the type variable to resolve
+   * @return the resolved argument, or {@link Optional#empty()} if it is not resolvable here
+   * @throws NullPointerException if {@code variable} is null
+   */
+  public Optional<TypeRef<?>> typeArgument(TypeVariable<?> variable) {
+    Objects.requireNonNull(variable, "variable must not be null");
+    if (!(variable.getGenericDeclaration() instanceof Class<?> definingClass)) {
+      return Optional.empty();
+    }
+    Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(type, definingClass);
+    if (typeArgs == null) {
+      return Optional.empty();
+    }
+    Type argument = typeArgs.get(variable);
+    if (argument == null || argument instanceof TypeVariable<?>) {
+      return Optional.empty();
+    }
+    return Optional.of(of(argument));
   }
 
   /**
@@ -547,15 +707,7 @@ public abstract class TypeRef<T> {
     if (index < 0 || index >= typeParameters.length) {
       return Optional.empty();
     }
-    Map<TypeVariable<?>, Type> typeArgs = TypeUtils.getTypeArguments(type, definingClass);
-    if (typeArgs == null) {
-      return Optional.empty();
-    }
-    Type argument = typeArgs.get(typeParameters[index]);
-    if (argument == null || argument instanceof TypeVariable<?>) {
-      return Optional.empty();
-    }
-    return Optional.of(of(argument));
+    return typeArgument(typeParameters[index]);
   }
 
   /**

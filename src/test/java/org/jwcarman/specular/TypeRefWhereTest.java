@@ -80,7 +80,9 @@ class TypeRefWhereTest {
 
     @Test
     void rejects_a_parameter_the_type_does_not_mention() {
-      assertThatThrownBy(() -> substituteUnrelated(TypeRef.of(Integer.class)))
+      TypeRef<Integer> argument = TypeRef.of(Integer.class);
+
+      assertThatThrownBy(() -> substituteUnrelated(argument))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("no type variable");
     }
@@ -88,9 +90,9 @@ class TypeRefWhereTest {
     @Test
     void rejects_a_null_parameter() {
       TypeRef<String> ref = TypeRef.of(String.class);
+      TypeRef<Integer> argument = TypeRef.of(Integer.class);
 
-      assertThatThrownBy(() -> ref.where(null, TypeRef.of(Integer.class)))
-          .isInstanceOf(NullPointerException.class);
+      assertThatThrownBy(() -> ref.where(null, argument)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
@@ -132,7 +134,9 @@ class TypeRefWhereTest {
 
     @Test
     void a_partly_substituted_reference_names_what_is_missing() {
-      assertThatThrownBy(() -> halfResolved(TypeRef.of(String.class)))
+      TypeRef<String> key = TypeRef.of(String.class);
+
+      assertThatThrownBy(() -> halfResolved(key))
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("unresolved type variable")
           .hasMessageContaining("V");

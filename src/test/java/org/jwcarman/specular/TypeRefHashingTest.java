@@ -159,7 +159,7 @@ class TypeRefHashingTest {
     void equals_itself() {
       TypeParameter<?> parameter = parameterOfList();
 
-      assertThat(parameter.equals(parameter)).isTrue();
+      assertThat(parameter).isEqualTo(parameter);
     }
 
     @Test
@@ -191,7 +191,9 @@ class TypeRefHashingTest {
 
     @Test
     void reports_the_variables_that_are_available() {
-      assertThatThrownBy(() -> mismatchedSubstitution(TypeRef.of(String.class)))
+      TypeRef<String> argument = TypeRef.of(String.class);
+
+      assertThatThrownBy(() -> mismatchedSubstitution(argument))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("no type variable")
           .hasMessageContaining("it has");

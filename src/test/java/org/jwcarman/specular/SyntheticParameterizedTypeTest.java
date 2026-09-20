@@ -21,6 +21,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Nested;
@@ -48,7 +49,7 @@ class SyntheticParameterizedTypeTest {
     @Test
     void holds_against_itself() {
       SyntheticParameterizedType type = listOfString();
-      assertThat(type.equals(type)).isTrue();
+      assertThat(type).isEqualTo(type);
     }
 
     @Test
@@ -63,30 +64,30 @@ class SyntheticParameterizedTypeTest {
 
     @Test
     void fails_against_a_type_that_is_not_parameterized() {
-      assertThat(listOfString().equals(String.class)).isFalse();
+      assertThat(listOfString()).isNotEqualTo(String.class);
     }
 
     @Test
     void fails_against_null() {
-      assertThat(listOfString().equals(null)).isFalse();
+      assertThat(listOfString()).isNotEqualTo(null);
     }
 
     @Test
     void fails_when_the_raw_type_differs() {
-      Type set = new SyntheticParameterizedType(java.util.Set.class, new Type[] {String.class});
-      assertThat(listOfString().equals(set)).isFalse();
+      Type set = new SyntheticParameterizedType(Set.class, new Type[] {String.class});
+      assertThat(listOfString()).isNotEqualTo(set);
     }
 
     @Test
     void fails_when_the_type_arguments_differ() {
       Type listOfInteger = new SyntheticParameterizedType(List.class, new Type[] {Integer.class});
-      assertThat(listOfString().equals(listOfInteger)).isFalse();
+      assertThat(listOfString()).isNotEqualTo(listOfInteger);
     }
 
     @Test
     void fails_when_the_owner_type_differs() {
       Type held = new SyntheticParameterizedType(Owner.Held.class, new Type[] {String.class});
-      assertThat(held.equals(listOfString())).isFalse();
+      assertThat(held).isNotEqualTo(listOfString());
     }
   }
 

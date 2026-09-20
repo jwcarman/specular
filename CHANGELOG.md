@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `TypeRef.isAssignableTo(Type|Class|TypeRef)` — the mirror of `isAssignableFrom`, for when the value's type is what you hold and the target is what you are checking against.
+- `TypeRef.fieldType(Field)` and `fieldType(Field, Class<?> context)` — the third reflection source alongside parameters and return types, with the same context-resolution behaviour.
+- `TypeRef.arrayOf(TypeRef<E>)` — builds `E[]`. A `GenericArrayType` could not otherwise be constructed without JDK internals. An array of a non-generic type comes back as the array `Class`, matching how the JDK models it, so a built array type equals a captured one.
+- `TypeRef.componentType()` — the component of an array, covering both the `Class` form (`String[]`) and the `GenericArrayType` form (`List<String>[]`).
+- `TypeRef.typeArguments()` — this type's own arguments in order, empty when it is not parameterized.
+- `TypeRef.typeArgument(TypeVariable<?>)` — resolve a variable by name rather than by position; the index-based overload now delegates to it.
+
 - `TypeRef.where(TypeParameter, TypeRef)` and the new `TypeParameter<T>` class — substitute a type variable in a template capture to build a fully parameterized reference whose static type the compiler *proves* rather than the caller asserting. This is the only construction path with no unchecked cast and no unprovable claim:
 
   ```java

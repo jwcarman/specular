@@ -40,7 +40,7 @@ import org.apache.commons.lang3.reflect.TypeUtils;
  */
 public abstract class TypeParameter<T> {
 
-  private final TypeVariable<?> variable;
+  final TypeVariable<?> variable;
 
   /**
    * Captures the type variable supplied by the anonymous subclass.
@@ -58,15 +58,6 @@ public abstract class TypeParameter<T> {
           "TypeParameter must capture a type variable, but captured " + captured);
     }
     this.variable = typeVariable;
-  }
-
-  /**
-   * Returns the captured variable.
-   *
-   * @return the captured variable
-   */
-  TypeVariable<?> variable() {
-    return variable;
   }
 
   @Override
