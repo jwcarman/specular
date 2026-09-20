@@ -62,7 +62,7 @@
         <!-- Dependency versions -->
         <commons-lang3.version>3.17.0</commons-lang3.version>
         <junit.version>5.11.3</junit.version>
-        <assertj.version>3.26.3</assertj.version>
+        <assertj.version>3.27.7</assertj.version>
 
         <!-- Plugin versions -->
         <compiler.plugin.version>3.13.0</compiler.plugin.version>
