@@ -95,21 +95,27 @@ class TypeRefBuildingTest {
 
     @Test
     void rejects_a_class_with_no_type_parameters() {
-      assertThatThrownBy(() -> TypeRef.parameterized(String.class, TypeRef.of(String.class)))
+      TypeRef<String> argument = TypeRef.of(String.class);
+
+      assertThatThrownBy(() -> TypeRef.parameterized(String.class, argument))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("not a generic class");
     }
 
     @Test
     void rejects_the_wrong_number_of_arguments() {
-      assertThatThrownBy(() -> TypeRef.parameterized(Map.class, TypeRef.of(String.class)))
+      TypeRef<String> argument = TypeRef.of(String.class);
+
+      assertThatThrownBy(() -> TypeRef.parameterized(Map.class, argument))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("2 type parameter(s) but 1 argument(s)");
     }
 
     @Test
     void rejects_a_primitive_type_argument() {
-      assertThatThrownBy(() -> TypeRef.listOf(TypeRef.of(int.class)))
+      TypeRef<Integer> primitive = TypeRef.of(int.class);
+
+      assertThatThrownBy(() -> TypeRef.listOf(primitive))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("cannot be primitive");
     }
