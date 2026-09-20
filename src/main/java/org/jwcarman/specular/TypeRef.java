@@ -792,8 +792,11 @@ public abstract class TypeRef<T> {
    * holds a {@code String} — this lets you say so:
    *
    * <pre>{@code
-   * TypeRef<String> firstName = TypeRef.fieldType(field).as();
+   * TypeRef<String> firstName = TypeRef.fieldType(field).coerced();
    * }</pre>
+   *
+   * <p>It is the counterpart of {@link #resolved()}: that one returns this reference having
+   * <em>checked</em> something, this one returns it having <em>claimed</em> something.
    *
    * <p>This is an assertion, not a proof. Nothing checks that {@code U} matches the captured type,
    * and a wrong one surfaces as a {@link ClassCastException} wherever a value is finally used —
@@ -805,7 +808,7 @@ public abstract class TypeRef<T> {
    * @return this reference, typed as claimed
    */
   @SuppressWarnings("unchecked") // The caller is asserting U; see the contract above.
-  public <U> TypeRef<U> as() {
+  public <U> TypeRef<U> coerced() {
     return (TypeRef<U>) this;
   }
 

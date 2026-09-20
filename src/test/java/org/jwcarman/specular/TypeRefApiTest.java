@@ -260,7 +260,7 @@ class TypeRefApiTest {
     void lets_the_caller_name_what_reflection_could_not() throws NoSuchFieldException {
       Field name = Holder.class.getField("name");
 
-      TypeRef<String> asserted = TypeRef.fieldType(name).as();
+      TypeRef<String> asserted = TypeRef.fieldType(name).coerced();
 
       assertThat(asserted.rawClass()).isEqualTo(String.class);
     }
@@ -269,7 +269,7 @@ class TypeRefApiTest {
     void returns_the_same_captured_type() throws NoSuchFieldException {
       Field name = Holder.class.getField("name");
 
-      assertThat(TypeRef.fieldType(name).as()).isEqualTo(TypeRef.of(String.class));
+      assertThat(TypeRef.fieldType(name).coerced()).isEqualTo(TypeRef.of(String.class));
     }
   }
 }
