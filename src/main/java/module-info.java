@@ -25,4 +25,12 @@ module org.jwcarman.specular {
   requires org.apache.commons.lang3;
 
   exports org.jwcarman.specular;
+
+  // Tests are patched into this module, and JUnit instantiates them reflectively. A qualified
+  // opens grants that access to JUnit alone: nothing else can reflect into the package, and no
+  // runtime dependency on JUnit is created. Without it the build passes while the same tests
+  // fail in an IDE, which runs them on the module path with no equivalent of Surefire's
+  // package opening.
+  opens org.jwcarman.specular to
+      org.junit.platform.commons;
 }

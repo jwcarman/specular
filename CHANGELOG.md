@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 - `TypeRef.resolved()` — the terminal call of a `where` chain, throwing `IllegalStateException` if any type variable is still unresolved. Substituting some of a template's variables and forgetting the rest produced a reference whose declared type claimed to be concrete while its captured type was not; that is now an error where it is made rather than a puzzle where it is used.
 - `TypeRef.unresolvedVariables()` — the type variables a reference still carries, so callers can check before relying on `rawClass()`.
-- `module-info.java` declaring the `org.jwcarman.specular` module. Specular set no `Automatic-Module-Name`, so on the module path it was named after the jar file. `requires org.apache.commons.lang3` is non-transitive: commons-lang3 types never appear in the public API.
+- `module-info.java` declaring the `org.jwcarman.specular` module. It carries a qualified `opens ... to org.junit.platform.commons` so the tests, which are patched into the module, can be instantiated reflectively on the module path. Nothing else can reflect into the package, and no runtime dependency on JUnit is created. Specular set no `Automatic-Module-Name`, so on the module path it was named after the jar file. `requires org.apache.commons.lang3` is non-transitive: commons-lang3 types never appear in the public API.
 
 ### Fixed
 
