@@ -114,6 +114,11 @@ new TypeRef<Map<K, V>>() {}
 If you would rather look than throw, `unresolvedVariables()` reports what is
 left.
 
+Substitution reaches everywhere in the template, not just its top-level
+arguments — an array component, a wildcard's bounds and the owner of an inner
+class are all rewritten. A primitive argument is rejected, as it is in the
+combinators.
+
 ### Any generic class: `parameterized`
 
 When the declared type does not matter, `parameterized` builds a reference from
@@ -163,3 +168,18 @@ This accepts any `Type`, including a wildcard or an unresolved variable, and
 returns `TypeRef<?>` because a `Type` carries no compile-time information. Check
 `unresolvedVariables()` before relying on `rawClass()`, which throws for a type
 with no single erased class.
+
+## Claiming what the library cannot prove
+
+Anything read from reflection comes back as `TypeRef<?>`, because a `Field` or
+`Method` does not tell the compiler what it holds. `coerced()` lets you say what
+you know:
+
+```java
+TypeRef<String> firstName = TypeRef.fieldType(field).coerced();
+```
+
+It is an assertion, not a proof — nothing checks it, and a wrong claim surfaces
+as a `ClassCastException` where the value is used. Reach for it only where the
+compiler genuinely cannot establish the type; where it can, `where` proves it
+instead.

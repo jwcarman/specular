@@ -129,21 +129,56 @@ factories too.
     is ambiguous and will not compile. Cast it — `(Class<?>) null` — if you are
     writing a test that checks the rejection.
 
+## What substitution reaches
+
+Resolution rewrites the whole type, not just its outermost arguments. Arrays,
+wildcard bounds, nested arguments and the owner of an inner class are all
+substituted:
+
+```java
+class Holder<T> {
+    List<T>[] arrayOfLists;
+    List<? extends T> bounded;
+    List<List<T>> nested;
+}
+class StringHolder extends Holder<String> { }
+
+TypeRef.fieldType(arrayOfLists, StringHolder.class);  // TypeRef<List<String>[]>
+TypeRef.fieldType(bounded,      StringHolder.class);  // TypeRef<List<? extends String>>
+TypeRef.fieldType(nested,       StringHolder.class);  // TypeRef<List<List<String>>>
+```
+
+It also follows a binding that leads to another binding, so a hierarchy that
+rebinds on its way up resolves all the way down:
+
+```java
+class Outer<T> { }
+class Middle<U> extends Outer<List<U>> { }
+class Bottom extends Middle<String> { }
+
+TypeRef.of(Bottom.class).supertype(Outer.class);   // TypeRef<Outer<List<String>>>
+```
+
 ## When a variable cannot be resolved
 
-Resolution is best-effort, and it is honest about what it could not do. Two
+Resolution goes as far as the context allows and is honest about the rest. Two
 things can happen.
 
-**The variable survives.** If the context binds a variable to *another* variable,
-there is no concrete answer, and the declared type comes back unchanged:
+**The variable survives.** If the context binds a variable to *another*
+variable, there is no concrete answer, and the answer is expressed in terms of
+the variable that is left:
 
 ```java
 class Base<T> { public T get() { ... } }
 class Sub<X> extends Base<X> { }
 
 TypeRef.returnType(Base.class.getMethod("get"), Sub.class).type();
-// T — Sub binds it to X, which is itself unresolved
+// X — Sub binds T to its own X, which nothing binds further
 ```
+
+An unresolvable variable is kept, never dropped. A wildcard bounded by one
+stays bounded by it — `List<? extends T>` does not quietly widen to `List<?>` —
+so what comes back always describes the same set of types the declaration did.
 
 The same is true of a method's own type variables, which no class context can
 bind.
@@ -160,12 +195,27 @@ Either way you can check what a reference still carries:
 ```java
 TypeRef<?> ref = TypeRef.returnType(method, Sub.class);
 
-ref.unresolvedVariables();   // [T]
+ref.unresolvedVariables();   // [X]
 ```
 
 A reference holding an unresolved variable cannot report a raw class —
 `rawClass()` throws — and its assignability answers are not meaningful. Check
 before you rely on it.
+
+## Claiming a type reflection cannot know
+
+The member factories return `TypeRef<?>`, because a `Field` or `Method` does not
+tell the compiler what it holds. When you know, say so:
+
+```java
+TypeRef<String> firstName = TypeRef.fieldType(field).coerced();
+```
+
+`coerced()` is the counterpart of `resolved()`: one returns the reference having
+*checked* something, the other having *claimed* something. Nothing verifies the
+claim — a wrong one surfaces as a `ClassCastException` where the value is used,
+exactly like the cast you would otherwise write. The difference is that it is
+written once, visibly, rather than at every call site.
 
 ## A worked example
 

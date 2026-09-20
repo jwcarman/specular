@@ -128,8 +128,9 @@ class TypeSubstitutionUnitTest {
     @Test
     void is_rejected_whether_it_is_a_class_or_a_generic_array() throws NoSuchMethodException {
       var method = List.class.getMethod("iterator");
+      TypeRef<String[]> arrayContext = TypeRef.of(String[].class);
 
-      assertThatThrownBy(() -> TypeRef.returnType(method, TypeRef.of(String[].class)))
+      assertThatThrownBy(() -> TypeRef.returnType(method, arrayContext))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("not a subtype");
     }

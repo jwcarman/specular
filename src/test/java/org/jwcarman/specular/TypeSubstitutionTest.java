@@ -145,7 +145,7 @@ class TypeSubstitutionTest {
     }
 
     @Test
-    void agrees_with_the_member_factories() throws NoSuchFieldException {
+    void agrees_with_the_member_factories() {
       TypeRef<?> viaSupertype = TypeRef.of(Bottom.class).supertype(Outer.class);
       TypeRef<?> viaArgument = TypeRef.of(Bottom.class).typeArgument(Outer.class, 0).orElseThrow();
 
@@ -181,7 +181,9 @@ class TypeSubstitutionTest {
 
     @Test
     void rejects_a_primitive_argument() {
-      assertThatThrownBy(() -> listTemplate(TypeRef.of(int.class)))
+      TypeRef<Integer> primitive = TypeRef.of(int.class);
+
+      assertThatThrownBy(() -> listTemplate(primitive))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("primitive");
     }

@@ -32,6 +32,12 @@ import java.util.StringJoiner;
  * <p>Package-private: an implementation detail of substitution, handed to callers as the {@link
  * WildcardType} interface.
  */
+@SuppressWarnings("java:S6206") // A record cannot express this type. Its generated equals and
+// hashCode compare array *references*, where a WildcardType must compare bounds by value and
+// normalise an absent upper bound to Object before doing so; its generated accessors would hand
+// out the backing arrays, where these must copy; and its components would have to be named
+// getUpperBounds/getLowerBounds to satisfy the interface. Every member a record provides would
+// need overriding, leaving a record in name only.
 final class SyntheticWildcardType implements WildcardType {
 
   private static final Type[] OBJECT_BOUND = {Object.class};
