@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TypeRef.getRawType()` replaced by `TypeRef.rawClass()`, which returns `Class<T>` rather than `Class<?>`. Callers who know the captured type no longer need an unchecked cast of their own; the single unchecked cast now lives in one documented, isolated method in the library. `rawClass()` also throws `IllegalArgumentException` where `getRawType()` returned `null` — for a type with no single erased class, such as an unresolved type variable.
 - The `protected TypeRef()` constructor now throws `IllegalArgumentException` when the captured type argument is a type variable. `new TypeRef<T>() {}` inside a generic method or class captured `T` itself, producing a reference whose raw class was `null` and whose assignability answers were meaningless. Resolution factories such as `parameterType(Parameter)` still return unresolved type variables by design; only capture through the constructor is rejected.
 
+### Added
+
+- `TypeRef.listOf`, `setOf`, `optionalOf` and `mapOf` — build a reference to a parameterized JDK collection type from the references to its arguments, keeping the compiler in the loop when the argument type is only known at run time.
+- `TypeRef.parameterized(Class<? super T>, TypeRef<?>...)` — the same for any other generic class. Arity and primitive arguments are checked at construction; the raw class literal acts as a compile-time witness for `T`.
+
 ### Fixed
 
 - `TypeRef.supertype(Class)` results are now usable as hash-based cache keys. The projected reference was `equals` to the same type captured by an anonymous subclass but hashed differently, so the two could not find each other in a `HashMap`. Parameterized types built by this library now follow the JDK's own equality, hashing and type-name conventions.

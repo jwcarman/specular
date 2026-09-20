@@ -21,9 +21,11 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.StringJoiner;
 import org.apache.commons.lang3.reflect.TypeUtils;
 
@@ -94,6 +96,120 @@ public abstract class TypeRef<T> {
   public static TypeRef<?> of(Type type) {
     Objects.requireNonNull(type, "type must not be null");
     return new TypeRef<>(type) {};
+  }
+
+  /**
+   * A reference to {@code List<E>} built from the reference to {@code E}.
+   *
+   * @param element the element type
+   * @param <E> the element type
+   * @return a reference to {@code List<E>}, equal to the same type captured by an anonymous
+   *     subclass
+   * @throws NullPointerException if {@code element} is null
+   * @throws IllegalArgumentException if {@code element} is a primitive type
+   */
+  public static <E> TypeRef<List<E>> listOf(TypeRef<E> element) {
+    return new TypeRef<List<E>>(parameterizedType(List.class, element)) {};
+  }
+
+  /**
+   * A reference to {@code Set<E>} built from the reference to {@code E}.
+   *
+   * @param element the element type
+   * @param <E> the element type
+   * @return a reference to {@code Set<E>}
+   * @throws NullPointerException if {@code element} is null
+   * @throws IllegalArgumentException if {@code element} is a primitive type
+   */
+  public static <E> TypeRef<Set<E>> setOf(TypeRef<E> element) {
+    return new TypeRef<Set<E>>(parameterizedType(Set.class, element)) {};
+  }
+
+  /**
+   * A reference to {@code Optional<E>} built from the reference to {@code E}.
+   *
+   * @param element the element type
+   * @param <E> the element type
+   * @return a reference to {@code Optional<E>}
+   * @throws NullPointerException if {@code element} is null
+   * @throws IllegalArgumentException if {@code element} is a primitive type
+   */
+  public static <E> TypeRef<Optional<E>> optionalOf(TypeRef<E> element) {
+    return new TypeRef<Optional<E>>(parameterizedType(Optional.class, element)) {};
+  }
+
+  /**
+   * A reference to {@code Map<K, V>} built from the references to {@code K} and {@code V}.
+   *
+   * @param key the key type
+   * @param value the value type
+   * @param <K> the key type
+   * @param <V> the value type
+   * @return a reference to {@code Map<K, V>}
+   * @throws NullPointerException if {@code key} or {@code value} is null
+   * @throws IllegalArgumentException if {@code key} or {@code value} is a primitive type
+   */
+  public static <K, V> TypeRef<Map<K, V>> mapOf(TypeRef<K> key, TypeRef<V> value) {
+    return new TypeRef<Map<K, V>>(parameterizedType(Map.class, key, value)) {};
+  }
+
+  /**
+   * A reference to any generic class applied to the given type arguments — your own {@code
+   * Envelope<T>} built from a {@code TypeRef<T>}, for example. The typed combinators ({@link
+   * #listOf}, {@link #mapOf} and friends) cover the common JDK types; this covers every other
+   * generic class. {@code T} is taken from the assignment context, so declare the reference you
+   * mean:
+   *
+   * <pre>{@code
+   * TypeRef<Envelope<String>> ref = TypeRef.parameterized(Envelope.class, TypeRef.of(String.class));
+   * }</pre>
+   *
+   * <p>The class literal is a witness for {@code T}: because a raw type is a supertype of each of
+   * its parameterizations, {@code Class<? super T>} lets the compiler reject {@code
+   * TypeRef<List<String>> ref = parameterized(Set.class, element)}. The arity of {@code arguments}
+   * is checked at construction, and a class with no type parameters is rejected. What remains
+   * unchecked is the identity and order of {@code arguments} against {@code T}'s own type
+   * arguments.
+   *
+   * @param raw the generic class, such as {@code Envelope.class}
+   * @param arguments one type reference per type parameter of {@code raw}, in declaration order;
+   *     each must be a reference type, not a primitive
+   * @param <T> {@code raw} applied to {@code arguments}
+   * @return a reference to {@code raw} applied to {@code arguments}
+   * @throws NullPointerException if {@code raw}, {@code arguments} or any argument is null
+   * @throws IllegalArgumentException if {@code raw} declares no type parameters, if the number of
+   *     arguments does not match the number it declares, or if an argument is a primitive type
+   */
+  public static <T> TypeRef<T> parameterized(Class<? super T> raw, TypeRef<?>... arguments) {
+    return new TypeRef<T>(parameterizedType(raw, arguments)) {};
+  }
+
+  private static ParameterizedType parameterizedType(Class<?> raw, TypeRef<?>... arguments) {
+    Objects.requireNonNull(raw, "raw must not be null");
+    Objects.requireNonNull(arguments, "arguments must not be null");
+    int expected = raw.getTypeParameters().length;
+    if (expected == 0) {
+      throw new IllegalArgumentException(raw.getName() + " is not a generic class");
+    }
+    if (arguments.length != expected) {
+      throw new IllegalArgumentException(
+          raw.getSimpleName()
+              + " declares "
+              + expected
+              + " type parameter(s) but "
+              + arguments.length
+              + " argument(s) were given");
+    }
+    Type[] types = new Type[arguments.length];
+    for (int i = 0; i < arguments.length; i++) {
+      Type argument = Objects.requireNonNull(arguments[i], "arguments must not contain null").type;
+      if (argument instanceof Class<?> clazz && clazz.isPrimitive()) {
+        throw new IllegalArgumentException(
+            "a type argument cannot be primitive: " + clazz.getName() + " (use its wrapper)");
+      }
+      types[i] = argument;
+    }
+    return new Parameterized(raw, types);
   }
 
   /**

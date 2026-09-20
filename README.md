@@ -63,6 +63,28 @@ Capturing a type variable — `new TypeRef<T>() {}` inside a generic method or c
 `IllegalArgumentException`. It captures `T` itself rather than the type it stands for, which
 yields a reference nothing can use.
 
+### Building parameterized types
+
+When the argument type is only known at run time, build the parameterized type instead of
+capturing it. Built types are interchangeable with captured ones, including as hash-based
+cache keys:
+
+```java
+TypeRef<List<String>> list = TypeRef.listOf(TypeRef.of(String.class));
+TypeRef.setOf(element)                  // Set<E>
+TypeRef.optionalOf(element)             // Optional<E>
+TypeRef.mapOf(keyRef, valueRef)         // Map<K, V>
+
+TypeRef<Envelope<String>> env =         // any other generic class
+    TypeRef.parameterized(Envelope.class, TypeRef.of(String.class));
+
+list.equals(new TypeRef<List<String>>() {});  // true — and same hashCode
+```
+
+The raw class literal is a compile-time witness for `T`, so `parameterized(Set.class, e)`
+won't compile into a `TypeRef<List<String>>`. Arity is checked at construction, and primitive
+type arguments are rejected.
+
 ### Type introspection
 
 ```java
