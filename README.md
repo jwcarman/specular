@@ -28,8 +28,8 @@ General-purpose reflection utilities for Java. A single class — `TypeRef<T>` �
 **Capture a parameterized type:**
 ```java
 TypeRef<Map<String, Integer>> ref = new TypeRef<>() {};
-ref.getType();     // ParameterizedType: Map<String, Integer>
-ref.getRawType();  // Map.class
+ref.type();       // ParameterizedType: Map<String, Integer>
+ref.rawClass();   // Map.class, typed as Class<Map<String, Integer>>
 ```
 
 **Check generic-aware assignability:**
@@ -46,7 +46,7 @@ class StringHandler extends Handler<String> {}
 
 Parameter p = Handler.class.getMethod("handle", Object.class).getParameters()[0];
 TypeRef<?> resolved = TypeRef.parameterType(p, StringHandler.class);
-resolved.getType();  // String.class (not the raw TypeVariable T)
+resolved.type();  // String.class (not the raw TypeVariable T)
 ```
 
 ## API
@@ -59,12 +59,21 @@ TypeRef.of(String.class)                // from a Class
 TypeRef.of(someType)                    // from any java.lang.reflect.Type (returns TypeRef<?>)
 ```
 
+Capturing a type variable — `new TypeRef<T>() {}` inside a generic method or class — throws
+`IllegalArgumentException`. It captures `T` itself rather than the type it stands for, which
+yields a reference nothing can use.
+
 ### Type introspection
 
 ```java
-Type    getType()      // the captured Type (may be Class or ParameterizedType)
-Class<?> getRawType()  // erased raw class — e.g. Map.class for Map<String,Integer>
+Type     type()      // the captured Type (may be Class or ParameterizedType)
+Class<T> rawClass()  // erased raw class — e.g. Map.class for Map<String,Integer>
 ```
+
+`rawClass()` returns `Class<T>`, not `Class<?>`, so you can narrow a value with the checked
+`Class.cast` instead of writing an unchecked cast at the call site. The library's single
+unchecked cast is isolated and documented in one method. It throws `IllegalArgumentException`
+for a type with no single erased class, such as an unresolved type variable.
 
 ### Reflection-driven factories
 

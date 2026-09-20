@@ -34,7 +34,7 @@ import org.apache.commons.lang3.reflect.TypeUtils;
  *
  * <pre>{@code
  * TypeRef<Map<String, Integer>> ref = new TypeRef<>() {};
- * Type type = ref.getType(); // ParameterizedType: Map<String, Integer>
+ * Type type = ref.type(); // ParameterizedType: Map<String, Integer>
  * }</pre>
  *
  * @param <T> the captured type
@@ -43,13 +43,28 @@ public abstract class TypeRef<T> {
 
   private final Type type;
 
+  /**
+   * Captures the type argument supplied by the anonymous subclass.
+   *
+   * @throws IllegalArgumentException if the subclass is not parameterized, or if the captured
+   *     argument is a type variable — {@code new TypeRef<T>() {}} inside a generic method or class
+   *     captures {@code T} itself rather than the type it stands for, producing a reference whose
+   *     raw class and assignability answers are meaningless
+   */
   protected TypeRef() {
     Type superclass = getClass().getGenericSuperclass();
     if (!(superclass instanceof ParameterizedType parameterized)) {
       throw new IllegalArgumentException(
           "TypeRef must be created as a parameterized anonymous subclass");
     }
-    this.type = parameterized.getActualTypeArguments()[0];
+    Type captured = parameterized.getActualTypeArguments()[0];
+    if (captured instanceof TypeVariable<?>) {
+      throw new IllegalArgumentException(
+          "TypeRef cannot capture the type variable "
+              + captured
+              + ": the type argument must be concrete where the anonymous subclass is created");
+    }
+    this.type = captured;
   }
 
   private TypeRef(Type type) {
@@ -188,18 +203,38 @@ public abstract class TypeRef<T> {
    *
    * @return the captured type
    */
-  public Type getType() {
+  public Type type() {
     return type;
   }
 
   /**
-   * Returns the erased raw {@link Class} of this reference's captured type. For a {@link
-   * ParameterizedType} like {@code Map<String, Integer>}, returns {@code Map.class}.
+   * Returns the erased class of the captured type: {@code Map.class} for {@code Map<String,
+   * Integer>}, the class itself for a non-generic type.
    *
-   * @return the raw class
+   * <p>This method contains the only unchecked cast in the codebase. It is sound by construction: a
+   * {@code TypeRef<T>} captures {@code T} and nothing else, so the erasure of the captured type is
+   * the erasure of {@code T}. Returning {@code Class<T>} rather than {@code Class<?>} means callers
+   * can narrow a value with {@link Class#cast} — a checked cast — instead of writing an unchecked
+   * cast of their own at every call site.
+   *
+   * @return the erased class of {@code T}
+   * @throws IllegalArgumentException if the captured type has no single erased class, as for an
+   *     unresolved type variable or a wildcard
    */
-  public Class<?> getRawType() {
-    return TypeUtils.getRawType(type, null);
+  public Class<T> rawClass() {
+    Class<?> raw = TypeUtils.getRawType(type, null);
+    if (raw == null) {
+      throw new IllegalArgumentException("Type has no single erased class: " + type.getTypeName());
+    }
+    return uncheckedTypeToken(raw);
+  }
+
+  /**
+   * The type-token bridge: the one place the erased class is asserted to be {@code Class<T>}.
+   * Isolated so the unchecked cast has exactly one line to live on.
+   */
+  private static <T> Class<T> uncheckedTypeToken(Class<?> raw) {
+    return (Class<T>) raw;
   }
 
   /**

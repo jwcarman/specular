@@ -92,16 +92,16 @@ class TypeRefResolutionTest {
     void resolves_type_variable_against_concrete_subtype() {
       Parameter p = parameterOf(Handler.class, "handle");
       TypeRef<?> resolved = TypeRef.parameterType(p, StringHandler.class);
-      assertThat(resolved.getType()).isEqualTo(String.class);
+      assertThat(resolved.type()).isEqualTo(String.class);
     }
 
     @Test
     void resolves_nested_type_variable_against_concrete_subtype() {
       Parameter p = parameterOf(Box.class, "fill");
       TypeRef<?> resolved = TypeRef.parameterType(p, IntegerBox.class);
-      assertThat(resolved.getType()).isInstanceOf(ParameterizedType.class);
-      assertThat(resolved.getRawType()).isEqualTo(List.class);
-      ParameterizedType pt = (ParameterizedType) resolved.getType();
+      assertThat(resolved.type()).isInstanceOf(ParameterizedType.class);
+      assertThat(resolved.rawClass()).isEqualTo(List.class);
+      ParameterizedType pt = (ParameterizedType) resolved.type();
       assertThat(pt.getActualTypeArguments()).containsExactly(Integer.class);
     }
 
@@ -110,14 +110,14 @@ class TypeRefResolutionTest {
       Parameter p = parameterOf(Handler.class, "handle");
       TypeRef<?> resolved = TypeRef.parameterType(p);
       // Without a subtype context, T stays as a TypeVariable.
-      assertThat(resolved.getType().getTypeName()).isEqualTo("T");
+      assertThat(resolved.type().getTypeName()).isEqualTo("T");
     }
 
     @Test
     void concrete_method_is_unaffected_by_no_context() {
       Parameter p = parameterOf(Concrete.class, "greet");
       TypeRef<?> resolved = TypeRef.parameterType(p);
-      assertThat(resolved.getRawType()).isEqualTo(Map.class);
+      assertThat(resolved.rawClass()).isEqualTo(Map.class);
     }
 
     @Test
@@ -149,15 +149,15 @@ class TypeRefResolutionTest {
     void resolves_type_variable_against_concrete_subtype() {
       Method m = methodOf(Handler.class, "handle");
       TypeRef<?> resolved = TypeRef.returnType(m, StringHandler.class);
-      assertThat(resolved.getType()).isEqualTo(String.class);
+      assertThat(resolved.type()).isEqualTo(String.class);
     }
 
     @Test
     void resolves_nested_type_variable_against_concrete_subtype() {
       Method m = methodOf(Box.class, "contents");
       TypeRef<?> resolved = TypeRef.returnType(m, IntegerBox.class);
-      assertThat(resolved.getRawType()).isEqualTo(List.class);
-      ParameterizedType pt = (ParameterizedType) resolved.getType();
+      assertThat(resolved.rawClass()).isEqualTo(List.class);
+      ParameterizedType pt = (ParameterizedType) resolved.type();
       assertThat(pt.getActualTypeArguments()).containsExactly(Integer.class);
     }
 
@@ -165,7 +165,7 @@ class TypeRefResolutionTest {
     void no_context_leaves_type_variable_unresolved() {
       Method m = methodOf(Handler.class, "handle");
       TypeRef<?> resolved = TypeRef.returnType(m);
-      assertThat(resolved.getType().getTypeName()).isEqualTo("T");
+      assertThat(resolved.type().getTypeName()).isEqualTo("T");
     }
 
     @Test
@@ -180,9 +180,9 @@ class TypeRefResolutionTest {
     @Test
     void returns_parameterized_form_of_direct_interface() {
       TypeRef<?> ref = TypeRef.of(StringHandler.class).supertype(Handler.class);
-      assertThat(ref.getRawType()).isEqualTo(Handler.class);
-      assertThat(ref.getType()).isInstanceOf(ParameterizedType.class);
-      ParameterizedType pt = (ParameterizedType) ref.getType();
+      assertThat(ref.rawClass()).isEqualTo(Handler.class);
+      assertThat(ref.type()).isInstanceOf(ParameterizedType.class);
+      ParameterizedType pt = (ParameterizedType) ref.type();
       assertThat(pt.getActualTypeArguments()).containsExactly(String.class);
     }
 
@@ -201,15 +201,15 @@ class TypeRefResolutionTest {
         }
       }
       TypeRef<?> ref = TypeRef.of(NamedIntegerBox.class).supertype(Box.class);
-      assertThat(ref.getRawType()).isEqualTo(Box.class);
-      ParameterizedType pt = (ParameterizedType) ref.getType();
+      assertThat(ref.rawClass()).isEqualTo(Box.class);
+      ParameterizedType pt = (ParameterizedType) ref.type();
       assertThat(pt.getActualTypeArguments()).containsExactly(Integer.class);
     }
 
     @Test
     void returns_raw_class_for_non_generic_supertype() {
       TypeRef<?> ref = TypeRef.of(String.class).supertype(Object.class);
-      assertThat(ref.getType()).isEqualTo(Object.class);
+      assertThat(ref.type()).isEqualTo(Object.class);
     }
 
     @Test
@@ -226,13 +226,13 @@ class TypeRefResolutionTest {
     void resolves_from_interface_binding() {
       Optional<TypeRef<?>> arg = TypeRef.of(StringHandler.class).typeArgument(Handler.class, 0);
       assertThat(arg).isPresent();
-      assertThat(arg.orElseThrow().getType()).isEqualTo(String.class);
+      assertThat(arg.orElseThrow().type()).isEqualTo(String.class);
     }
 
     @Test
     void resolves_from_interface_binding_with_parameterized_argument() {
       Optional<TypeRef<?>> arg = TypeRef.of(IntegerBox.class).typeArgument(Box.class, 0);
-      assertThat(arg.orElseThrow().getType()).isEqualTo(Integer.class);
+      assertThat(arg.orElseThrow().type()).isEqualTo(Integer.class);
     }
 
     @Test

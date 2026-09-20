@@ -35,14 +35,14 @@ class TypeRefTest {
     @Test
     void captures_simple_type_from_anonymous_subclass() {
       TypeRef<String> ref = new TypeRef<>() {};
-      assertThat(ref.getType()).isEqualTo(String.class);
+      assertThat(ref.type()).isEqualTo(String.class);
     }
 
     @Test
     void captures_parameterized_type_from_anonymous_subclass() {
       TypeRef<Map<String, Integer>> ref = new TypeRef<>() {};
-      assertThat(ref.getType()).isInstanceOf(ParameterizedType.class);
-      ParameterizedType pt = (ParameterizedType) ref.getType();
+      assertThat(ref.type()).isInstanceOf(ParameterizedType.class);
+      ParameterizedType pt = (ParameterizedType) ref.type();
       assertThat(pt.getRawType()).isEqualTo(Map.class);
       assertThat(pt.getActualTypeArguments()).containsExactly(String.class, Integer.class);
     }
@@ -50,7 +50,7 @@ class TypeRefTest {
     @Test
     void captures_nested_parameterized_type_from_anonymous_subclass() {
       TypeRef<List<Map<String, Integer>>> ref = new TypeRef<>() {};
-      ParameterizedType pt = (ParameterizedType) ref.getType();
+      ParameterizedType pt = (ParameterizedType) ref.type();
       assertThat(pt.getRawType()).isEqualTo(List.class);
       assertThat(pt.getActualTypeArguments()[0]).isInstanceOf(ParameterizedType.class);
     }
@@ -58,14 +58,14 @@ class TypeRefTest {
     @Test
     void of_class_wraps_class() {
       TypeRef<String> ref = TypeRef.of(String.class);
-      assertThat(ref.getType()).isEqualTo(String.class);
+      assertThat(ref.type()).isEqualTo(String.class);
     }
 
     @Test
     void of_type_wraps_parameterized_type() {
       TypeRef<Map<String, String>> seed = new TypeRef<>() {};
-      TypeRef<?> wrapped = TypeRef.of(seed.getType());
-      assertThat(wrapped.getType()).isEqualTo(seed.getType());
+      TypeRef<?> wrapped = TypeRef.of(seed.type());
+      assertThat(wrapped.type()).isEqualTo(seed.type());
     }
   }
 
@@ -98,19 +98,19 @@ class TypeRefTest {
 
     @Test
     void of_class_returns_the_class() {
-      assertThat(TypeRef.of(String.class).getRawType()).isEqualTo(String.class);
+      assertThat(TypeRef.of(String.class).rawClass()).isEqualTo(String.class);
     }
 
     @Test
     void parameterized_returns_outer_erasure() {
       TypeRef<Map<String, Integer>> ref = new TypeRef<>() {};
-      assertThat(ref.getRawType()).isEqualTo(Map.class);
+      assertThat(ref.rawClass()).isEqualTo(Map.class);
     }
 
     @Test
     void nested_parameterized_returns_outer_erasure() {
       TypeRef<List<Map<String, Integer>>> ref = new TypeRef<>() {};
-      assertThat(ref.getRawType()).isEqualTo(List.class);
+      assertThat(ref.rawClass()).isEqualTo(List.class);
     }
   }
 

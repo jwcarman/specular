@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking changes
 
 - `TypeRef.parameterType(Parameter, Class<?>)` and `TypeRef.returnType(Method, Class<?>)` now throw `IllegalArgumentException` when the context class is not a subtype of the declaring class. Previously this silently returned the unresolved type, masking caller bugs.
+- `TypeRef.getType()` renamed to `TypeRef.type()` for consistency with the other accessors.
+- `TypeRef.getRawType()` replaced by `TypeRef.rawClass()`, which returns `Class<T>` rather than `Class<?>`. Callers who know the captured type no longer need an unchecked cast of their own; the single unchecked cast now lives in one documented, isolated method in the library. `rawClass()` also throws `IllegalArgumentException` where `getRawType()` returned `null` — for a type with no single erased class, such as an unresolved type variable.
+- The `protected TypeRef()` constructor now throws `IllegalArgumentException` when the captured type argument is a type variable. `new TypeRef<T>() {}` inside a generic method or class captured `T` itself, producing a reference whose raw class was `null` and whose assignability answers were meaningless. Resolution factories such as `parameterType(Parameter)` still return unresolved type variables by design; only capture through the constructor is rejected.
 
 ### Fixed
 
