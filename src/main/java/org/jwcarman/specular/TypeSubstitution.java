@@ -20,7 +20,11 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Replaces type variables with the types bound to them, throughout a type.
@@ -47,55 +51,64 @@ final class TypeSubstitution {
    * @return the rewritten type, or {@code type} itself when nothing in it is bound
    */
   static Type substitute(Type type, Map<TypeVariable<?>, Type> bindings) {
-    return substitute(type, bindings, 0);
+    return substitute(type, bindings, new HashSet<>());
   }
 
   /**
-   * @param depth guards against a binding cycle ({@code T -> U -> T}), which no legal Java program
-   *     produces but a hand-built map can.
+   * @param expanding the variables currently being expanded. Only a binding can lead back to a
+   *     variable already in flight, so this catches a cycle exactly; descending into the structure
+   *     of a type cannot loop, however deeply it nests.
    */
-  private static Type substitute(Type type, Map<TypeVariable<?>, Type> bindings, int depth) {
-    if (depth > MAX_DEPTH) {
-      return type;
-    }
+  private static Type substitute(
+      Type type, Map<TypeVariable<?>, Type> bindings, Set<TypeVariable<?>> expanding) {
     return switch (type) {
-      case TypeVariable<?> variable -> substituteVariable(variable, bindings, depth);
+      case TypeVariable<?> variable -> substituteVariable(variable, bindings, expanding);
       case ParameterizedType parameterized ->
-          substituteParameterized(parameterized, bindings, depth);
-      case GenericArrayType array -> substituteArray(array, bindings, depth);
-      case WildcardType wildcard -> substituteWildcard(wildcard, bindings, depth);
+          substituteParameterized(parameterized, bindings, expanding);
+      case GenericArrayType array -> substituteArray(array, bindings, expanding);
+      case WildcardType wildcard -> substituteWildcard(wildcard, bindings, expanding);
       case null, default -> type;
     };
   }
 
-  private static final int MAX_DEPTH = 32;
-
   private static Type substituteVariable(
-      TypeVariable<?> variable, Map<TypeVariable<?>, Type> bindings, int depth) {
+      TypeVariable<?> variable,
+      Map<TypeVariable<?>, Type> bindings,
+      Set<TypeVariable<?>> expanding) {
     Type bound = bindings.get(variable);
     // An unbound variable stays as it is: it is still an honest part of the type.
     if (bound == null || bound.equals(variable)) {
       return variable;
     }
-    // The binding may itself name a variable that is bound — Sub<X> extends Base<List<X>>.
-    return substitute(bound, bindings, depth + 1);
+    if (!expanding.add(variable)) {
+      throw new IllegalStateException(
+          "type variable " + variable.getName() + " is bound through a cycle");
+    }
+    try {
+      // The binding may itself name a variable that is bound — Sub<X> extends Base<List<X>>.
+      return substitute(bound, bindings, expanding);
+    } finally {
+      expanding.remove(variable);
+    }
   }
 
   private static Type substituteParameterized(
-      ParameterizedType parameterized, Map<TypeVariable<?>, Type> bindings, int depth) {
+      ParameterizedType parameterized,
+      Map<TypeVariable<?>, Type> bindings,
+      Set<TypeVariable<?>> expanding) {
     Type[] arguments = parameterized.getActualTypeArguments();
     Type[] substituted = new Type[arguments.length];
     for (int i = 0; i < arguments.length; i++) {
-      substituted[i] = substitute(arguments[i], bindings, depth + 1);
+      substituted[i] = substitute(arguments[i], bindings, expanding);
     }
-    Type owner = substitute(parameterized.getOwnerType(), bindings, depth + 1);
+    Type owner = substitute(parameterized.getOwnerType(), bindings, expanding);
     return new SyntheticParameterizedType(
         owner, (Class<?>) parameterized.getRawType(), substituted);
   }
 
   private static Type substituteArray(
-      GenericArrayType array, Map<TypeVariable<?>, Type> bindings, int depth) {
-    Type component = substitute(array.getGenericComponentType(), bindings, depth + 1);
+      GenericArrayType array, Map<TypeVariable<?>, Type> bindings, Set<TypeVariable<?>> expanding) {
+    Type component = substitute(array.getGenericComponentType(), bindings, expanding);
     // An array of a non-generic type is a Class in the JDK's model; match that so a substituted
     // array equals the same array captured from source.
     return component instanceof Class<?> clazz
@@ -104,23 +117,38 @@ final class TypeSubstitution {
   }
 
   private static Type substituteWildcard(
-      WildcardType wildcard, Map<TypeVariable<?>, Type> bindings, int depth) {
+      WildcardType wildcard, Map<TypeVariable<?>, Type> bindings, Set<TypeVariable<?>> expanding) {
     return new SyntheticWildcardType(
-        substituteAll(wildcard.getUpperBounds(), bindings, depth),
-        substituteAll(wildcard.getLowerBounds(), bindings, depth));
+        substituteBounds(wildcard.getUpperBounds(), bindings, expanding, true),
+        substituteBounds(wildcard.getLowerBounds(), bindings, expanding, false));
   }
 
-  private static Type[] substituteAll(
-      Type[] types, Map<TypeVariable<?>, Type> bindings, int depth) {
-    Type[] substituted = new Type[types.length];
-    for (int i = 0; i < types.length; i++) {
-      Type result = substitute(types[i], bindings, depth + 1);
-      // `? extends (? extends X)` is not a legal type; collapse it to `? extends X`.
-      substituted[i] =
-          result instanceof WildcardType nested && nested.getLowerBounds().length == 0
-              ? nested.getUpperBounds()[0]
-              : result;
+  /**
+   * Substitutes a wildcard's bounds, flattening any bound that becomes a wildcard itself.
+   *
+   * <p>{@code ? extends (? super Integer)} is not a legal type. A nested wildcard contributes its
+   * own bounds in the same position — which, because {@link SyntheticWildcardType} normalises an
+   * absent upper bound to {@code Object}, widens such a case to plain {@code ?} rather than
+   * inventing a bound that was never there.
+   *
+   * @param upper whether these are the upper bounds, which decides which side of a nested wildcard
+   *     is the honest contribution
+   */
+  private static Type[] substituteBounds(
+      Type[] types,
+      Map<TypeVariable<?>, Type> bindings,
+      Set<TypeVariable<?>> expanding,
+      boolean upper) {
+    List<Type> substituted = new ArrayList<>(types.length);
+    for (Type type : types) {
+      Type result = substitute(type, bindings, expanding);
+      if (result instanceof WildcardType nested) {
+        // Keep every bound, not just the first: `? extends Number & Comparable` has two.
+        substituted.addAll(List.of(upper ? nested.getUpperBounds() : nested.getLowerBounds()));
+      } else {
+        substituted.add(result);
+      }
     }
-    return substituted;
+    return substituted.toArray(Type[]::new);
   }
 }

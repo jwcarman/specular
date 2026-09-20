@@ -185,4 +185,26 @@ class TypeRefWhereTest {
   private static <E> TypeRef<List<? extends E>> wildcardOf() {
     return new TypeRef<List<? extends E>>() {};
   }
+
+  @Nested
+  class When_two_variables_share_a_name {
+
+    @Test
+    void the_rejection_says_where_each_was_declared() {
+      // Both are called E, so the message has to distinguish them by declaration.
+      assertThatThrownBy(() -> substituteForeignE(TypeRef.of(String.class)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("declared by");
+    }
+  }
+
+  /** The TypeParameter captures this method's E, while the template carries another method's. */
+  private static <E> TypeRef<List<?>> substituteForeignE(TypeRef<E> argument) {
+    return listOfOtherE().where(new TypeParameter<E>() {}, argument);
+  }
+
+  private static <E> TypeRef<List<?>> listOfOtherE() {
+    TypeRef<List<E>> template = new TypeRef<>() {};
+    return template.coerced();
+  }
 }

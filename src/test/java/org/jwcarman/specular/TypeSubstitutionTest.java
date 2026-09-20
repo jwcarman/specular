@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -220,6 +221,68 @@ class TypeSubstitutionTest {
       TypeRef<?> fromContext = TypeRef.fieldType(field("upperBounded"), StringHolder.class);
 
       assertThat(cache).containsEntry(fromContext, "registered");
+    }
+  }
+
+  public static class Enclosing<A> {
+    public class Nested<B> {}
+  }
+
+  public static class PlainEnclosing {
+    public class Inner<B> {}
+  }
+
+  @Nested
+  class An_inner_class_of_a_non_generic_outer {
+
+    @Test
+    void keeps_its_own_arguments_and_names_the_plain_outer() {
+      TypeRef<PlainEnclosing.Inner<String>> captured = new TypeRef<>() {};
+
+      assertThat(captured.supertype(PlainEnclosing.Inner.class)).isEqualTo(captured);
+    }
+  }
+
+  @Nested
+  class A_top_level_class {
+
+    @Test
+    void is_projected_with_no_owner_at_all() {
+      assertThat(new TypeRef<ArrayList<String>>() {}.supertype(List.class))
+          .isEqualTo(new TypeRef<List<String>>() {});
+    }
+  }
+
+  @Nested
+  class A_static_nested_class {
+
+    @Test
+    void is_projected_with_its_declaring_class_as_the_owner() {
+      TypeRef<Map.Entry<String, Integer>> captured = new TypeRef<>() {};
+
+      assertThat(captured.supertype(Map.Entry.class)).isEqualTo(captured);
+    }
+  }
+
+  @Nested
+  class An_inner_class_of_a_generic_outer {
+
+    @Test
+    void keeps_the_outer_arguments_when_projected_onto_itself() {
+      TypeRef<Enclosing<String>.Nested<Integer>> captured = new TypeRef<>() {};
+
+      assertThat(captured.supertype(Enclosing.Nested.class)).isEqualTo(captured);
+    }
+
+    @Test
+    void is_found_in_a_hash_map_after_projection() {
+      Map<TypeRef<?>, String> cache = new HashMap<>();
+      cache.put(new TypeRef<Enclosing<String>.Nested<Integer>>() {}, "registered");
+
+      TypeRef<?> projected =
+          new TypeRef<Enclosing<String>.Nested<Integer>>() {}.supertype(Enclosing.Nested.class);
+
+      assertThat(cache).containsEntry(projected, "registered");
     }
   }
 }

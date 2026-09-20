@@ -18,6 +18,7 @@ package org.jwcarman.specular;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -471,6 +472,25 @@ public abstract class TypeRef<T> {
     return resolveAgainst(field.getGenericType(), field.getDeclaringClass(), context.type);
   }
 
+  /**
+   * The enclosing type of {@code raw}, with the outer class's own variables resolved where it has
+   * any. An inner class of a generic outer — {@code Outer<String>.Inner<Integer>} — is only fully
+   * named when the owner carries its arguments too.
+   */
+  private static Type owner(Class<?> raw, Map<TypeVariable<?>, Type> typeArgs) {
+    Class<?> declaring = raw.getDeclaringClass();
+    if (declaring == null || Modifier.isStatic(raw.getModifiers())) {
+      return declaring;
+    }
+    TypeVariable<?>[] outerVariables = declaring.getTypeParameters();
+    if (outerVariables.length == 0) {
+      return declaring;
+    }
+    return resolveAll(outerVariables, typeArgs)
+        .<Type>map(resolved -> new SyntheticParameterizedType(declaring, resolved))
+        .orElse(declaring);
+  }
+
   private static boolean isArray(Type type) {
     return type instanceof GenericArrayType || (type instanceof Class<?> clazz && clazz.isArray());
   }
@@ -559,7 +579,7 @@ public abstract class TypeRef<T> {
       throw new IllegalArgumentException(
           type.getTypeName()
               + " has no type variable "
-              + parameter.variable.getName()
+              + describe(parameter.variable)
               + " to substitute"
               + (unresolved.isEmpty() ? "" : " (it has " + names(unresolved) + ")"));
     }
@@ -613,9 +633,18 @@ public abstract class TypeRef<T> {
   private static String names(Set<TypeVariable<?>> variables) {
     StringJoiner joined = new StringJoiner(", ");
     for (TypeVariable<?> variable : variables) {
-      joined.add(variable.getName());
+      joined.add(describe(variable));
     }
     return joined.toString();
+  }
+
+  /**
+   * Names a variable along with what declared it. Two variables can share a name — every other
+   * generic method calls its parameter {@code E} — so the name alone makes for a message that reads
+   * as a contradiction.
+   */
+  private static String describe(TypeVariable<?> variable) {
+    return variable.getName() + " declared by " + variable.getGenericDeclaration();
   }
 
   private static void collectVariables(Type type, Set<TypeVariable<?>> into) {
@@ -910,7 +939,9 @@ public abstract class TypeRef<T> {
     // All or nothing: a supertype whose arguments cannot all be resolved is reported raw
     // rather than half-built.
     return resolveAll(vars, typeArgs)
-        .<TypeRef<?>>map(resolved -> of(new SyntheticParameterizedType(supertype, resolved)))
+        .<TypeRef<?>>map(
+            resolved ->
+                of(new SyntheticParameterizedType(owner(supertype, typeArgs), supertype, resolved)))
         .orElseGet(() -> of(supertype));
   }
 

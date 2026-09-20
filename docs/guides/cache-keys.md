@@ -103,10 +103,19 @@ class Outer<T> {
 `Outer<String>.Inner<Integer>` captured by an anonymous subclass carries the
 `String`; the same type built by `parameterized` does not, so the two are not
 equal. This affects inner classes of generic outer classes only — static nested
-classes such as `Map.Entry` are unaffected, and every other construction route
-is consistent.
+classes such as `Map.Entry` are unaffected.
 
-If you need such a type as a key, capture it rather than building it.
+Every other construction route carries the owner's arguments, including
+`supertype`, `where` and the member factories:
+
+```java
+TypeRef<Outer<String>.Inner<Integer>> captured = new TypeRef<>() {};
+
+captured.supertype(Outer.Inner.class).equals(captured);   // true
+```
+
+If you need such a type as a key, capture it or resolve it rather than building
+it with `parameterized`.
 
 ## Keys live as long as their classes
 

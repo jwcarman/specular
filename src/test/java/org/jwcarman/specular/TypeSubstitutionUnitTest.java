@@ -58,13 +58,63 @@ class TypeSubstitutionUnitTest {
   class A_cycle_between_two_variables {
 
     @Test
-    void terminates_instead_of_recursing_forever() {
+    void is_reported_rather_than_silently_producing_a_wrong_type() {
       Map<TypeVariable<?>, Type> bindings = new HashMap<>();
       bindings.put(A, B);
       bindings.put(B, A);
 
-      // The depth guard stops the chase; what matters is that it returns at all.
-      assertThat(TypeSubstitution.substitute(A, bindings)).isNotNull();
+      assertThatThrownBy(() -> TypeSubstitution.substitute(A, bindings))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("cycle");
+    }
+
+    @Test
+    void is_reported_when_a_variable_is_bound_to_a_type_naming_itself() {
+      Map<TypeVariable<?>, Type> bindings = new HashMap<>();
+      bindings.put(A, new SyntheticParameterizedType(List.class, new Type[] {A}));
+
+      assertThatThrownBy(() -> TypeSubstitution.substitute(A, bindings))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("cycle");
+    }
+  }
+
+  @Nested
+  class A_deeply_nested_type {
+
+    @Test
+    void is_substituted_all_the_way_down() {
+      // Structural depth is not a cycle. Nesting far past any guard must still resolve.
+      Type deep = A;
+      for (int i = 0; i < 100; i++) {
+        deep = new SyntheticParameterizedType(List.class, new Type[] {deep});
+      }
+
+      Type substituted = TypeSubstitution.substitute(deep, Map.of(A, String.class));
+
+      assertThat(TypeRef.of(substituted).unresolvedVariables()).isEmpty();
+    }
+
+    @Test
+    void keeps_a_variable_that_has_no_binding_however_deep_it_sits() {
+      Type deep = A;
+      for (int i = 0; i < 100; i++) {
+        deep = new SyntheticParameterizedType(List.class, new Type[] {deep});
+      }
+
+      Type substituted = TypeSubstitution.substitute(deep, Map.of());
+
+      assertThat(TypeRef.of(substituted).unresolvedVariables()).containsExactly(A);
+    }
+
+    @Test
+    void may_mention_the_same_variable_in_sibling_positions() {
+      // Two occurrences side by side are not a cycle.
+      Type pair = new SyntheticParameterizedType(Map.class, new Type[] {A, A});
+
+      Type substituted = TypeSubstitution.substitute(pair, Map.of(A, String.class));
+
+      assertThat(TypeRef.of(substituted)).isEqualTo(new TypeRef<Map<String, String>>() {});
     }
   }
 
@@ -133,6 +183,47 @@ class TypeSubstitutionUnitTest {
       assertThatThrownBy(() -> TypeRef.returnType(method, arrayContext))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("not a subtype");
+    }
+  }
+
+  @Nested
+  class A_wildcard_whose_bound_becomes_a_wildcard {
+
+    @Test
+    void widens_to_unbounded_when_an_upper_bound_becomes_lower_bounded() {
+      // `? extends (? super Integer)` is not a legal type; the honest widening is `?`.
+      Map<TypeVariable<?>, Type> bindings =
+          Map.of(A, new SyntheticWildcardType(new Type[0], new Type[] {Integer.class}));
+      Type upperBoundedByA = new SyntheticWildcardType(new Type[] {A}, new Type[0]);
+
+      Type substituted = TypeSubstitution.substitute(upperBoundedByA, bindings);
+
+      assertThat(substituted.getTypeName()).isEqualTo("?");
+    }
+
+    @Test
+    void widens_to_unbounded_when_a_lower_bound_becomes_upper_bounded() {
+      Map<TypeVariable<?>, Type> bindings =
+          Map.of(A, new SyntheticWildcardType(new Type[] {Number.class}, new Type[0]));
+      Type lowerBoundedByA = new SyntheticWildcardType(new Type[0], new Type[] {A});
+
+      Type substituted = TypeSubstitution.substitute(lowerBoundedByA, bindings);
+
+      assertThat(substituted.getTypeName()).isEqualTo("?");
+    }
+
+    @Test
+    void keeps_every_bound_of_an_intersection_rather_than_the_first() {
+      Map<TypeVariable<?>, Type> bindings =
+          Map.of(
+              A,
+              new SyntheticWildcardType(new Type[] {Number.class, Comparable.class}, new Type[0]));
+      Type upperBoundedByA = new SyntheticWildcardType(new Type[] {A}, new Type[0]);
+
+      Type substituted = TypeSubstitution.substitute(upperBoundedByA, bindings);
+
+      assertThat(substituted.getTypeName())
+          .isEqualTo("? extends java.lang.Number & java.lang.Comparable");
     }
   }
 }
