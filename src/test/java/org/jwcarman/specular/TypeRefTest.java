@@ -85,7 +85,7 @@ class TypeRefTest {
     }
 
     @Test
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings("rawtypes") // the raw construction under test cannot be written without it
     void raw_anonymous_subclass_is_rejected() {
       assertThatThrownBy(() -> new TypeRef() {})
           .isInstanceOf(IllegalArgumentException.class)

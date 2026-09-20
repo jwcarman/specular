@@ -20,13 +20,11 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.StringJoiner;
 import org.apache.commons.lang3.reflect.TypeUtils;
 
 /**
@@ -209,7 +207,7 @@ public abstract class TypeRef<T> {
       }
       types[i] = argument;
     }
-    return new Parameterized(raw, types);
+    return new SyntheticParameterizedType(raw, types);
   }
 
   /**
@@ -397,7 +395,7 @@ public abstract class TypeRef<T> {
     for (int i = 0; i < vars.length; i++) {
       resolved[i] = typeArgs.get(vars[i]);
     }
-    return of(new Parameterized(supertype, resolved));
+    return of(new SyntheticParameterizedType(supertype, resolved));
   }
 
   @Override
@@ -415,66 +413,5 @@ public abstract class TypeRef<T> {
   @Override
   public String toString() {
     return "TypeRef<" + type.getTypeName() + ">";
-  }
-
-  /**
-   * A {@link ParameterizedType} built at run time. Equality, hashing and the type name follow the
-   * JDK's own implementation so that a type built here and the same type captured by an anonymous
-   * subclass are interchangeable as cache keys.
-   */
-  private static final class Parameterized implements ParameterizedType {
-
-    private final Class<?> raw;
-    private final Type[] arguments;
-
-    Parameterized(Class<?> raw, Type[] arguments) {
-      this.raw = raw;
-      this.arguments = arguments;
-    }
-
-    @Override
-    public Type[] getActualTypeArguments() {
-      return arguments.clone();
-    }
-
-    @Override
-    public Type getRawType() {
-      return raw;
-    }
-
-    @Override
-    public Type getOwnerType() {
-      return raw.getDeclaringClass();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof ParameterizedType other)) return false;
-      return Objects.equals(getOwnerType(), other.getOwnerType())
-          && raw.equals(other.getRawType())
-          && Arrays.equals(arguments, other.getActualTypeArguments());
-    }
-
-    @Override
-    public int hashCode() {
-      return Arrays.hashCode(arguments) ^ Objects.hashCode(getOwnerType()) ^ raw.hashCode();
-    }
-
-    @Override
-    public String getTypeName() {
-      StringJoiner args = new StringJoiner(", ", "<", ">");
-      for (Type argument : arguments) {
-        args.add(argument.getTypeName());
-      }
-      Type owner = getOwnerType();
-      String name = owner == null ? raw.getName() : owner.getTypeName() + "$" + raw.getSimpleName();
-      return name + args;
-    }
-
-    @Override
-    public String toString() {
-      return getTypeName();
-    }
   }
 }
