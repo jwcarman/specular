@@ -192,7 +192,9 @@ class TypeRefWhereTest {
     @Test
     void the_rejection_says_where_each_was_declared() {
       // Both are called E, so the message has to distinguish them by declaration.
-      assertThatThrownBy(() -> substituteForeignE(TypeRef.of(String.class)))
+      TypeRef<String> argument = TypeRef.of(String.class);
+
+      assertThatThrownBy(() -> substituteForeignE(argument))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("declared by");
     }
