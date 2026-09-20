@@ -145,6 +145,14 @@
                 <version>${surefire.plugin.version}</version>
                 <configuration>
                     <argLine>@{jacocoArgLine}</argLine>
+                    <!-- Run tests on the classpath rather than patched into the module. JUnit
+                         needs reflective access to instantiate test classes, which a patched
+                         module does not grant without an "opens" directive, and adding one to
+                         module-info would weaken the published module for a test-only reason.
+                         Surefire papers over this by opening the package itself; IDEs do not,
+                         so tests that pass in the build fail in the IDE. The module descriptor
+                         is still compiled and shipped, and "jar describe-module" verifies it. -->
+                    <useModulePath>false</useModulePath>
                 </configuration>
             </plugin>
             <plugin>
